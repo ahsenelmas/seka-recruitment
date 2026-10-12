@@ -1,0 +1,24 @@
+.env
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+
+# Frontend
+node_modules/
+.next/
+out/
+
+# Uploaded documents
+backend/uploads/
+
+# Logs and editors
+*.log
+.vscode/
+.idea/
