@@ -215,7 +215,31 @@ export default function Home() {
   ];
 
   return (
-    <main className="workspace">
+    <main className="workspace dashboard-workspace">
+      <aside className="dashboard-sidebar">
+        <a className="sidebar-brand" href="/">SEKA</a>
+        <p className="sidebar-caption">
+          {language === "pl" ? "ZARZĄDZANIE REKRUTACJĄ" : "RECRUITMENT MANAGEMENT"}
+        </p>
+        <nav aria-label={language === "pl" ? "Nawigacja główna" : "Main navigation"}>
+          <a href="#overview">
+            {language === "pl" ? "Przegląd rekrutacji" : "Recruitment overview"}
+          </a>
+          <a href="#candidate-list">
+            {language === "pl" ? "Kandydaci" : "Candidates"}
+          </a>
+          <a href="/intake">
+            {language === "pl" ? "Dodaj aplikację e-mail" : "Add email application"}
+          </a>
+        </nav>
+        <div className="sidebar-footer">
+          <span className="sidebar-avatar" aria-hidden="true">HR</span>
+          <div>
+            <strong>{language === "pl" ? "Przestrzeń HR" : "HR workspace"}</strong>
+            <p>{t.demo}</p>
+          </div>
+        </div>
+      </aside>
       <header className="topbar">
         <a href="/" className="brand">
           SEKA<span>{t.recruitment}</span>
@@ -237,7 +261,7 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="page-heading">
+      <section className="page-heading" id="overview">
         <div>
           <p className="eyebrow">{language === "pl" ? "PANEL HR" : "HR DASHBOARD"}</p>
           <h1>{t.title}</h1>
@@ -258,11 +282,17 @@ export default function Home() {
       {overviewError && <p className="error" role="alert">{t.error}</p>}
 
       <section className="stats-grid" aria-label={t.title}>
-        {cards.map((card) => (
-          <article className="stat-card" key={card.label}>
+        {cards.map((card, index) => (
+          <button className="stat-card stat-filter" key={card.label}
+            aria-pressed={status === ["", "new", "review", "interview", "hired", "rejected"][index]}
+            onClick={() => {
+              setStatus(["", "new", "review", "interview", "hired", "rejected"][index]);
+              setOffset(0);
+              document.getElementById("candidate-list")?.scrollIntoView();
+            }}>
             <p>{card.label}</p>
             <strong>{card.value ?? "—"}</strong>
-          </article>
+          </button>
         ))}
       </section>
 
@@ -282,7 +312,7 @@ export default function Home() {
         </section>
       )}
 
-      <section className="panel">
+      <section className="panel" id="candidate-list">
         <div className="panel-heading">
           <div><h2>{t.candidates}</h2><p>{t.searchHelp}</p></div>
           <span className="result-count">
@@ -351,15 +381,24 @@ export default function Home() {
                   <tr>
                     <th>{t.candidate}</th><th>{t.position}</th>
                     <th>{t.city}</th><th>{t.status}</th>
-                    <th>{t.date}</th><th>CV</th>
+                    <th>{t.date}</th><th>CV</th><th>{language === "pl" ? "Profil" : "Profile"}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {page.items.map((candidate) => (
                     <tr key={candidate.id}>
                       <td>
-                        <a className="candidate-link" href={`/candidates/${candidate.id}`}><strong>{candidate.first_name} {candidate.last_name}</strong></a>
-                        <span className="cell-subtitle">{candidate.email}</span>
+                        <div className="candidate-identity">
+                          <span className="candidate-avatar" aria-hidden="true">
+                            {candidate.first_name.slice(0, 1)}{candidate.last_name.slice(0, 1)}
+                          </span>
+                          <div>
+                            <a className="candidate-link" href={`/candidates/${candidate.id}`}>
+                              <strong>{candidate.first_name} {candidate.last_name}</strong>
+                            </a>
+                            <span className="cell-subtitle">{candidate.email}</span>
+                          </div>
+                        </div>
                       </td>
                       <td>{positionLabel(candidate.position)}</td>
                       <td>{candidate.branch.city}</td>
@@ -373,7 +412,17 @@ export default function Home() {
                           language === "pl" ? "pl-PL" : "en-GB",
                         )}
                       </td>
-                      <td>{candidate.cv_original_filename ? t.added : t.missing}</td>
+                      <td>
+                        <span className={candidate.cv_original_filename ? "cv-present" : "muted-text"}>
+                          {candidate.cv_original_filename ? t.added : t.missing}
+                        </span>
+                      </td>
+                      <td>
+                        <a className="profile-action" href={`/candidates/${candidate.id}`}
+                          aria-label={`${language === "pl" ? "Otwórz profil" : "Open profile"}: ${candidate.first_name} ${candidate.last_name}`}>
+                          {language === "pl" ? "Otwórz" : "Open"} →
+                        </a>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -405,5 +454,6 @@ export default function Home() {
     </main>
   );
 }
+
 
 
