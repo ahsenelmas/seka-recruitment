@@ -1,4 +1,4 @@
-﻿import os
+import os
 import re
 from pathlib import Path
 from uuid import UUID, uuid4
@@ -7,7 +7,9 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from app.pdf_validation import pdf_problem
 from app.config import BACKEND_DIR
+from app.demo_access import DemoAccess, demo_access, require_hr
 from app.database import get_db
 from app.routes import find_candidate
 from app.schemas import CandidateOut
@@ -38,31 +40,20 @@ def upload_cv(
     candidate_id: UUID,
     file: UploadFile,
     db: Session = Depends(get_db),
+    access: DemoAccess = Depends(demo_access),
 ):
-    candidate = find_candidate(candidate_id, db)
+    require_hr(access)
+    candidate = find_candidate(candidate_id, db, access)
 
     try:
         original_name = (file.filename or "").replace("\\", "/").split("/")[-1]
 
-        if not original_name.lower().endswith(".pdf"):
-            raise HTTPException(
-                status_code=400,
-                detail="Dozwolone są wyłącznie pliki PDF.",
-            )
-
         content = file.file.read(MAX_SIZE + 1)
-
         if len(content) > MAX_SIZE:
-            raise HTTPException(
-                status_code=413,
-                detail="Maksymalny rozmiar pliku to 5 MB.",
-            )
-
-        if not content.startswith(b"%PDF-"):
-            raise HTTPException(
-                status_code=400,
-                detail="Plik nie ma prawidłowego nagłówka PDF.",
-            )
+            raise HTTPException(status_code=413, detail="Maksymalny rozmiar pliku to 5 MB.")
+        problem = pdf_problem(content, original_name)
+        if problem:
+            raise HTTPException(status_code=400, detail=problem)
     finally:
         file.file.close()
 
@@ -74,6 +65,7 @@ def upload_cv(
 
     try:
         path.write_bytes(content)
+        candidate.cv_validation_error = None
         candidate.cv_storage_key = key
         candidate.cv_original_filename = original_name[:255]
         db.commit()
@@ -97,8 +89,9 @@ def upload_cv(
 def view_cv(
     candidate_id: UUID,
     db: Session = Depends(get_db),
+    access: DemoAccess = Depends(demo_access),
 ):
-    candidate = find_candidate(candidate_id, db)
+    candidate = find_candidate(candidate_id, db, access)
 
     if not candidate.cv_storage_key:
         raise HTTPException(

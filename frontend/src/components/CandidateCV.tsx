@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useRef, useState } from "react";
 import { API_URL, Candidate } from "@/lib/api";
@@ -36,6 +36,7 @@ type Props = {
   candidateId: string;
   filename: string | null;
   language: "pl" | "en";
+  readOnly?: boolean;
   onUploaded: (candidate: Candidate) => void;
 };
 
@@ -44,6 +45,7 @@ export default function CandidateCV({
   filename,
   language,
   onUploaded,
+  readOnly = false,
 }: Props) {
   const t = TEXT[language];
   const inputRef = useRef<HTMLInputElement>(null);
@@ -73,7 +75,7 @@ export default function CandidateCV({
 
       const response = await fetch(
         `${API_URL}/candidates/${candidateId}/cv`,
-        { method: "POST", body },
+        { method: "POST", body, credentials: "include" },
       );
 
       if (!response.ok) throw new Error("Upload failed");
@@ -110,7 +112,7 @@ export default function CandidateCV({
         </div>
       )}
 
-      <div className="cv-upload">
+      {!readOnly && <div className="cv-upload">
         <label>
           {t.choose}
           <input ref={inputRef} type="file"
@@ -125,7 +127,7 @@ export default function CandidateCV({
           disabled={!file || uploading} onClick={upload}>
           {uploading ? t.uploading : t.upload}
         </button>
-      </div>
+      </div>}
 
       <div aria-live="polite">
         {message === "success" && (

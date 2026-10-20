@@ -1,6 +1,8 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useState } from "react";
+import DemoRoleSelector from "@/components/DemoRoleSelector";
+import ApplicationCompleteness from "@/components/ApplicationCompleteness";
+import { useCallback, useEffect, useState } from "react";
 import {
   apiGet,
   Branch,
@@ -108,6 +110,8 @@ const EN_POSITIONS: Record<string, string> = {
 const PAGE_SIZE = 20;
 
 export default function Home() {
+  const [canEdit, setCanEdit] = useState(false);
+  const onDemoContext = useCallback((context: { role: string }) => setCanEdit(context.role !== "branch_manager"), []);
   const [language, setLanguage] = useState<Language>("pl");
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -126,7 +130,8 @@ export default function Home() {
   const t = TEXT[language];
   const statusLabels = language === "pl" ? STATUS_LABELS : EN_STATUSES;
 
-  function positionLabel(value: string) {
+  function positionLabel(value: string | null) {
+    if (!value) return language === "pl" ? "Brak stanowiska" : "Missing position";
     return language === "en" ? EN_POSITIONS[value] ?? value : value;
   }
 
@@ -228,9 +233,9 @@ export default function Home() {
           <a href="#candidate-list">
             {language === "pl" ? "Kandydaci" : "Candidates"}
           </a>
-          <a href="/intake">
+          {canEdit && <a href="/intake">
             {language === "pl" ? "Dodaj aplikację e-mail" : "Add email application"}
-          </a>
+          </a>}
         </nav>
         <div className="sidebar-footer">
           <span className="sidebar-avatar" aria-hidden="true">HR</span>
@@ -260,6 +265,7 @@ export default function Home() {
           <span className="demo-label">{t.demo}</span>
         </div>
       </header>
+      <DemoRoleSelector language={language} onContext={onDemoContext} />
 
       <section className="page-heading" id="overview">
         <div>
@@ -274,11 +280,11 @@ export default function Home() {
       </section>
 
       <p className="demo-notice">{t.notice}</p>
-      <div className="intake-shortcut">
+      {canEdit && <div className="intake-shortcut">
         <a className="secondary-button" href="/intake">
           {language === "pl" ? "+ Dodaj aplikację e-mail" : "+ Add email application"}
         </a>
-      </div>
+      </div>}
       {overviewError && <p className="error" role="alert">{t.error}</p>}
 
       <section className="stats-grid" aria-label={t.title}>
@@ -309,6 +315,10 @@ export default function Home() {
               {branch.city}<strong>{branch.total}</strong>
             </button>
           ))}
+          {dashboard.unassigned > 0 && <span className="branch-chip">
+            {language === "pl" ? "Bez przypisanego miasta" : "No assigned city"}
+            <strong>{dashboard.unassigned}</strong>
+          </span>}
         </section>
       )}
 
@@ -400,8 +410,8 @@ export default function Home() {
                           </div>
                         </div>
                       </td>
-                      <td>{positionLabel(candidate.position)}</td>
-                      <td>{candidate.branch.city}</td>
+                      <td>{positionLabel(candidate.position)}<ApplicationCompleteness candidate={candidate} language={language} /></td>
+                      <td>{candidate.branch?.city ?? (language === "pl" ? "Brak miasta" : "Missing city")}</td>
                       <td>
                         <span className={`status-badge status-${candidate.status}`}>
                           {statusLabels[candidate.status]}

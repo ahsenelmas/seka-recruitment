@@ -1,9 +1,10 @@
-﻿from uuid import UUID
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
+from app.demo_access import DemoAccess, demo_access, candidate_scope, require_hr
 from app.database import get_db
 from app.models import Branch, Candidate
 from app.schemas import (
@@ -18,23 +19,24 @@ router = APIRouter(prefix="/api", tags=["Rekrutacja"])
 
 
 @router.get("/branches", response_model=list[BranchOut])
-def list_branches(db: Session = Depends(get_db)):
+def list_branches(db: Session = Depends(get_db), access: DemoAccess = Depends(demo_access)):
     return db.scalars(
-        select(Branch).order_by(Branch.city)
+        select(Branch).where(*([Branch.id == access.branch_id] if access.role == "branch_manager" else [])).order_by(Branch.city)
     ).all()
 
 
 @router.get("/positions", response_model=list[str])
-def list_positions(db: Session = Depends(get_db)):
+def list_positions(db: Session = Depends(get_db), access: DemoAccess = Depends(demo_access)):
     return db.scalars(
         select(Candidate.position)
+        .where(Candidate.position.is_not(None), *candidate_scope(access))
         .distinct()
         .order_by(Candidate.position)
     ).all()
 
 
 @router.get("/dashboard")
-def dashboard(db: Session = Depends(get_db)):
+def dashboard(db: Session = Depends(get_db), access: DemoAccess = Depends(demo_access)):
     statuses = {
         "new": 0,
         "review": 0,
@@ -44,7 +46,7 @@ def dashboard(db: Session = Depends(get_db)):
     }
 
     counts = db.execute(
-        select(Candidate.status, func.count(Candidate.id))
+        select(Candidate.status, func.count(Candidate.id)).where(*candidate_scope(access))
         .group_by(Candidate.status)
     ).all()
 
@@ -58,6 +60,7 @@ def dashboard(db: Session = Depends(get_db)):
             func.count(Candidate.id).label("total"),
         )
         .outerjoin(Candidate, Candidate.branch_id == Branch.id)
+        .where(*([Branch.id == access.branch_id] if access.role == "branch_manager" else []))
         .group_by(Branch.id, Branch.city)
         .order_by(Branch.city)
     ).all()
@@ -65,6 +68,7 @@ def dashboard(db: Session = Depends(get_db)):
     return {
         "total": sum(statuses.values()),
         "by_status": statuses,
+        "unassigned": db.scalar(select(func.count(Candidate.id)).where(Candidate.branch_id.is_(None), *candidate_scope(access))),
         "by_branch": [
             {
                 "branch_id": row.id,
@@ -85,8 +89,9 @@ def list_candidates(
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
+    access: DemoAccess = Depends(demo_access),
 ):
-    filters = []
+    filters = candidate_scope(access)
 
     if search and search.strip():
         # Escape SQL wildcard characters so search is literal.
@@ -116,13 +121,13 @@ def list_candidates(
 
     total = db.scalar(
         select(func.count(Candidate.id))
-        .join(Branch)
+        .outerjoin(Branch)
         .where(*filters)
     )
 
     items = db.scalars(
         select(Candidate)
-        .join(Branch)
+        .outerjoin(Branch)
         .options(joinedload(Candidate.branch))
         .where(*filters)
         .order_by(Candidate.created_at.desc(), Candidate.id)
@@ -138,11 +143,11 @@ def list_candidates(
     }
 
 
-def find_candidate(candidate_id: UUID, db: Session):
+def find_candidate(candidate_id: UUID, db: Session, access: DemoAccess):
     candidate = db.scalar(
         select(Candidate)
         .options(joinedload(Candidate.branch))
-        .where(Candidate.id == candidate_id)
+        .where(Candidate.id == candidate_id, *candidate_scope(access))
     )
     if candidate is None:
         raise HTTPException(
@@ -156,8 +161,9 @@ def find_candidate(candidate_id: UUID, db: Session):
 def get_candidate(
     candidate_id: UUID,
     db: Session = Depends(get_db),
+    access: DemoAccess = Depends(demo_access),
 ):
-    return find_candidate(candidate_id, db)
+    return find_candidate(candidate_id, db, access)
 
 
 @router.patch("/candidates/{candidate_id}", response_model=CandidateOut)
@@ -165,13 +171,16 @@ def update_candidate(
     candidate_id: UUID,
     payload: CandidateUpdate,
     db: Session = Depends(get_db),
+    access: DemoAccess = Depends(demo_access),
 ):
-    candidate = find_candidate(candidate_id, db)
+    require_hr(access)
+    candidate = find_candidate(candidate_id, db, access)
     changes = payload.model_dump(exclude_unset=True)
 
     if "branch_id" in changes:
-        branch = db.get(Branch, changes.pop("branch_id"))
-        if branch is None:
+        branch_id = changes.pop("branch_id")
+        branch = db.get(Branch, branch_id) if branch_id is not None else None
+        if branch_id is not None and branch is None:
             raise HTTPException(
                 status_code=404,
                 detail="Nie znaleziono oddziału.",

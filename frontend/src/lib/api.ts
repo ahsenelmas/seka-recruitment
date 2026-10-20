@@ -1,4 +1,4 @@
-﻿export const API_URL =
+export const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
 
 export const STATUS_LABELS = {
@@ -17,19 +17,31 @@ export type Branch = {
   name: string;
 };
 
+export type FollowUpEmail = {
+  status: "draft_only" | "not_needed";
+  recipient: string;
+  subject: string | null;
+  body: string | null;
+  missing_information: string[];
+};
+
 export type Candidate = {
   id: string;
   first_name: string;
   last_name: string;
   email: string;
   phone: string | null;
-  position: string;
-  branch: Branch;
+  position: string | null;
+  branch: Branch | null;
   status: CandidateStatus;
   hr_notes: string;
   source: string;
   email_subject: string | null;
   email_body: string | null;
+  missing_information: string[];
+  is_complete: boolean;
+  follow_up_email: FollowUpEmail;
+  cv_validation_error: string | null;
   cv_original_filename: string | null;
   created_at: string;
   updated_at: string;
@@ -43,6 +55,7 @@ export type CandidatePage = {
 };
 
 export type Dashboard = {
+  unassigned: number;
   total: number;
   by_status: Record<CandidateStatus, number>;
   by_branch: {
@@ -57,6 +70,7 @@ export async function apiGet<T>(
   signal?: AbortSignal,
 ): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
+    credentials: "include",
     cache: "no-store",
     signal,
   });
@@ -67,3 +81,10 @@ export async function apiGet<T>(
 
   return response.json();
 }
+
+export type DemoContext = {
+  role: "admin" | "hr_manager" | "branch_manager";
+  branch_id: number | null;
+  simulation: boolean;
+  branches: Branch[];
+};

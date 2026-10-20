@@ -1,4 +1,4 @@
-﻿from datetime import datetime
+from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
@@ -17,6 +17,14 @@ class BranchOut(BaseModel):
     name: str
 
 
+class FollowUpEmailOut(BaseModel):
+    status: Literal["draft_only", "not_needed"]
+    recipient: str
+    subject: str | None
+    body: str | None
+    missing_information: list[str]
+
+
 class CandidateOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -25,14 +33,18 @@ class CandidateOut(BaseModel):
     last_name: str
     email: str
     phone: str | None
-    position: str
-    branch: BranchOut
+    position: str | None
+    branch: BranchOut | None
     status: CandidateStatus
     hr_notes: str
     source: str
     email_subject: str | None
     email_body: str | None
     cv_original_filename: str | None
+    missing_information: list[str]
+    is_complete: bool
+    follow_up_email: FollowUpEmailOut
+    cv_validation_error: str | None
     created_at: datetime
     updated_at: datetime
 
@@ -58,9 +70,9 @@ class CandidateUpdate(BaseModel):
     def validate_changes(self):
         for field in self.model_fields_set:
             value = getattr(self, field)
-            if value is None:
+            if value is None and field not in {"branch_id", "position"}:
                 raise ValueError("Pole nie może mieć wartości null.")
-            if field == "position":
+            if field == "position" and value is not None:
                 self.position = value.strip()
                 if not self.position:
                     raise ValueError("Stanowisko nie może być puste.")

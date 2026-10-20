@@ -1,4 +1,4 @@
-﻿from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -11,12 +11,23 @@ app = FastAPI(
     version="0.1.0",
 )
 
+@app.middleware("http")
+async def no_cached_demo_data(request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "private, no-store"
+        vary = response.headers.get("Vary", "")
+        if "cookie" not in {part.strip().lower() for part in vary.split(",")}:
+            response.headers["Vary"] = (vary + ", Cookie").strip(", ")
+    return response
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+    allow_headers=["Content-Type"],
 )
 
 
@@ -55,3 +66,6 @@ app.include_router(cv_router)
 from app.intake_routes import router as intake_router
 
 app.include_router(intake_router)
+
+from app.demo_access import router as demo_router
+app.include_router(demo_router)
