@@ -1,6 +1,8 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useRef, useState } from "react";
+import DemoRoleSelector from "@/components/DemoRoleSelector";
+import ApplicationCompleteness from "@/components/ApplicationCompleteness";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { API_URL, apiGet, Branch, Candidate } from "@/lib/api";
 
 type Language = "pl" | "en";
@@ -15,18 +17,18 @@ const TEXT = {
     email: "E-mail nadawcy",
     position: "Stanowisko",
     branch: "Oddział / miasto",
-    select: "Wybierz oddział",
+    select: "Nie podano miasta",
     subject: "Temat wiadomości",
     body: "Treść wiadomości",
     cv: "Załącznik CV — PDF",
-    hint: "Maksymalnie 5 MB. Adres e-mail musi być w domenie example.com.",
+    hint: "CV, miasto i stanowisko są opcjonalne przy przyjęciu. Braki zostaną oznaczone. Maksymalnie 5 MB; adres w domenie example.com.",
     submit: "Utwórz profil kandydata",
     saving: "Zapisywanie…",
     sample: "Wypełnij przykładowymi danymi",
     error: "Nie udało się zapisać aplikacji. Sprawdź pola i spróbuj ponownie.",
     loadError: "Nie udało się pobrać oddziałów.",
     retry: "Spróbuj ponownie",
-    invalid: "Wypełnij pola, użyj adresu example.com i wybierz PDF do 5 MB.",
+    invalid: "Wypełnij wymagane pola i użyj adresu example.com. Załącznik może mieć maksymalnie 5 MB.",
     success: "Profil kandydata został utworzony.",
     open: "Otwórz profil",
     demo: "Wersja demonstracyjna",
@@ -40,18 +42,18 @@ const TEXT = {
     email: "Sender email",
     position: "Position",
     branch: "Branch / city",
-    select: "Select a branch",
+    select: "City not provided",
     subject: "Email subject",
     body: "Email body",
     cv: "CV attachment — PDF",
-    hint: "Maximum 5 MB. The email address must use example.com.",
+    hint: "CV, city and position may be missing at intake and will be flagged. Maximum 5 MB; use an example.com address.",
     submit: "Create candidate profile",
     saving: "Saving…",
     sample: "Fill with sample data",
     error: "Could not save the application. Check the fields and try again.",
     loadError: "Could not load branches.",
     retry: "Try again",
-    invalid: "Complete the fields, use an example.com address, and choose a PDF up to 5 MB.",
+    invalid: "Complete the required fields and use an example.com address. Attachment limit: 5 MB.",
     success: "Candidate profile created successfully.",
     open: "Open profile",
     demo: "Demo version",
@@ -69,6 +71,7 @@ const EMPTY = {
 };
 
 export default function IntakePage() {
+  const [canEdit, setCanEdit] = useState(false);
   const [language, setLanguage] = useState<Language>("pl");
   const [branches, setBranches] = useState<Branch[]>([]);
   const [fields, setFields] = useState(EMPTY);
@@ -79,6 +82,7 @@ export default function IntakePage() {
   const [created, setCreated] = useState<Candidate | null>(null);
   const [retry, setRetry] = useState(0);
   const submitting = useRef(false);
+  const onDemoContext = useCallback((context: { role: string }) => setCanEdit(context.role !== "branch_manager"), []);
   const t = TEXT[language];
 
   useEffect(() => {
@@ -128,15 +132,12 @@ export default function IntakePage() {
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (submitting.current || created) return;
+    if (submitting.current || created || !canEdit) return;
 
     if (
-      Object.values(fields).some((value) => !value.trim()) ||
+      [fields.first_name, fields.last_name, fields.email, fields.email_subject, fields.email_body].some((value) => !value.trim()) ||
       !/^[^\s@]+@example\.com$/i.test(fields.email.trim()) ||
-      !file ||
-      !file.name.toLowerCase().endsWith(".pdf") ||
-      file.size === 0 ||
-      file.size > 5 * 1024 * 1024
+      (file !== null && file.size > 5 * 1024 * 1024)
     ) {
       setError("invalid");
       return;
@@ -149,11 +150,12 @@ export default function IntakePage() {
     try {
       const body = new FormData();
       Object.entries(fields).forEach(([name, value]) => {
-        body.append(name, value.trim());
+        if (value.trim()) body.append(name, value.trim());
       });
-      body.append("file", file);
+      if (file) body.append("file", file);
 
       const response = await fetch(`${API_URL}/intake/sample-email`, {
+        credentials: "include",
         method: "POST",
         body,
       });
@@ -186,6 +188,8 @@ export default function IntakePage() {
           <span className="demo-label">{t.demo}</span>
         </div>
       </header>
+      <DemoRoleSelector language={language} onContext={onDemoContext} />
+      {!canEdit && <p className="demo-notice">{language === "pl" ? "Widok tylko do odczytu. Dodawanie i edycja aplikacji są dostępne dla HR i administratora." : "Read-only view. Intake and editing are available to HR and administrators."}</p>}
 
       <a href="/" className="back-link">{t.back}</a>
       <section className="page-heading"><h1>{t.title}</h1></section>
@@ -195,8 +199,9 @@ export default function IntakePage() {
         <section className="panel profile-card" aria-live="polite">
           <h2>{t.success}</h2>
           <p className="success-message">
-            {created.first_name} {created.last_name} · {created.branch.city}
+            {created.first_name} {created.last_name} · {created.branch?.city ?? (language === "pl" ? "Brak miasta" : "Missing city")}
           </p>
+          <ApplicationCompleteness candidate={created} language={language} />
           <a className="secondary-button"
             href={`/candidates/${created.id}`}>{t.open}</a>
         </section>
@@ -216,7 +221,7 @@ export default function IntakePage() {
           </button>
 
           <form className="intake-form" onSubmit={submit}>
-            <fieldset disabled={saving}>
+            <fieldset disabled={saving || !canEdit}>
               <div className="intake-grid">
                 <label>{t.first}
                   <input required maxLength={100} value={fields.first_name}
@@ -232,11 +237,11 @@ export default function IntakePage() {
                     onChange={(e) => update("email", e.target.value)} />
                 </label>
                 <label>{t.position}
-                  <input required maxLength={150} value={fields.position}
+                  <input maxLength={150} value={fields.position}
                     onChange={(e) => update("position", e.target.value)} />
                 </label>
                 <label>{t.branch}
-                  <select required value={fields.branch_id}
+                  <select value={fields.branch_id}
                     onChange={(e) => update("branch_id", e.target.value)}>
                     <option value="">{t.select}</option>
                     {branches.map((branch) => (
@@ -253,7 +258,7 @@ export default function IntakePage() {
                     onChange={(e) => update("email_body", e.target.value)} />
                 </label>
                 <label className="full-width">{t.cv}
-                  <input type="file" required accept=".pdf,application/pdf"
+                  <input type="file" accept=".pdf,application/pdf"
                     onChange={(e) => {
                       setFile(e.target.files?.[0] ?? null);
                       setError(null);

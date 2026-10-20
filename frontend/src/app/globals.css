@@ -1,4 +1,4 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 
 :root {
   color-scheme: light;
@@ -1035,3 +1035,12 @@ input::file-selector-button {
     padding: 10px;
   }
 }
+
+.completeness { margin: 12px 0; }
+.completeness ul { margin: 8px 0 0; padding-left: 18px; color: #795b19; font-size: 12px; line-height: 1.7; }
+.completeness-panel { margin-bottom: 24px; }
+
+.demo-role-panel { border: 1px solid #dce3ec; background: #fff; border-radius: 12px; padding: 16px 20px; margin: 20px 0; }
+.demo-role-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.demo-role-controls label { flex: 1; min-width: 190px; }
+.demo-role-panel .muted-text { margin: 8px 0 16px; }
