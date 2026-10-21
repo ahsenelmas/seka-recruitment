@@ -3,6 +3,7 @@
 use App\Http\Controllers\RecruitmentController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CandidateCvController;
+use App\Http\Controllers\EmailIntakeController;
 
 Route::get('/health', function () {
     return response()->json([
@@ -50,3 +51,13 @@ Route::get('/candidates/{id}/cv', [
     CandidateCvController::class,
     'show',
 ])->whereUuid('id');
+
+Route::post('/intake/sample-email', [
+    EmailIntakeController::class,
+    'store',
+]);
+
+// SEKA_DEMO_ROLE_ROUTES
+\Illuminate\Support\Facades\Route::get('/demo/context', [\App\Http\Controllers\DemoContextController::class, 'show']);
+\Illuminate\Support\Facades\Route::post('/demo/context', [\App\Http\Controllers\DemoContextController::class, 'store']);
+\Illuminate\Support\Facades\Route::get('/demo/admin-overview', [\App\Http\Controllers\DemoContextController::class, 'adminOverview']);

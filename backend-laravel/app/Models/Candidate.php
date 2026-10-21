@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Candidate extends Model
 {
+    use \App\Models\Concerns\ScopesDemoBranch;
+
     use HasUuids;
 
     protected $fillable = [

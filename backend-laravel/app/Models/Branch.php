@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Branch extends Model
 {
+    use \App\Models\Concerns\ScopesDemoBranch;
+
     protected $fillable = [
         'city',
         'name',
