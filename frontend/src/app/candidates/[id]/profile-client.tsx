@@ -1,4 +1,6 @@
 "use client";
+import WorkspaceNavigation from "@/components/WorkspaceNavigation";
+import { useLanguage } from "@/lib/useLanguage";
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
@@ -15,7 +17,7 @@ import {
   STATUS_LABELS,
 } from "@/lib/api";
 
-type Language = "pl" | "en";
+
 
 const TEXT = {
   pl: {
@@ -39,7 +41,6 @@ const TEXT = {
     loading: "Ładowanie profilu…",
     retry: "Spróbuj ponownie",
     missing: "Nie podano",
-    demo: "Wersja demonstracyjna",
     language: "Język interfejsu",
     unsaved: "Masz niezapisane zmiany.",
     cv: "Dokument CV",
@@ -66,7 +67,6 @@ const TEXT = {
     loading: "Loading profile…",
     retry: "Try again",
     missing: "Not provided",
-    demo: "Demo version",
     language: "Interface language",
     unsaved: "You have unsaved changes.",
     cv: "CV document",
@@ -91,7 +91,7 @@ const EN_POSITIONS: Record<string, string> = {
 export default function CandidateProfile() {
   const { id } = useParams<{ id: string }>();
   const [canEdit, setCanEdit] = useState(false);
-  const [language, setLanguage] = useState<Language>("pl");
+  const [language, changeLanguage] = useLanguage();
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [status, setStatus] = useState<CandidateStatus>("new");
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -111,10 +111,6 @@ export default function CandidateProfile() {
     (status !== candidate.status || notes !== candidate.hr_notes ||
       branchId !== String(candidate.branch?.id ?? "") || position !== (candidate.position ?? ""));
 
-  useEffect(() => {
-    const saved = localStorage.getItem("seka-language");
-    if (saved === "pl" || saved === "en") setLanguage(saved);
-  }, []);
 
   useEffect(() => {
     document.documentElement.lang = language;
@@ -159,10 +155,6 @@ export default function CandidateProfile() {
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
-  function changeLanguage(value: Language) {
-    setLanguage(value);
-    localStorage.setItem("seka-language", value);
-  }
 
   async function saveChanges(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -195,21 +187,8 @@ export default function CandidateProfile() {
   }
 
   return (
-    <main className="workspace">
-      <header className="topbar">
-        <a href="/" className="brand">SEKA</a>
-        <div className="header-actions">
-          <div className="language-switch" role="group" aria-label={t.language}>
-            <button className={language === "pl" ? "active" : ""}
-              aria-pressed={language === "pl"}
-              onClick={() => changeLanguage("pl")}>Polski</button>
-            <button className={language === "en" ? "active" : ""}
-              aria-pressed={language === "en"}
-              onClick={() => changeLanguage("en")}>English</button>
-          </div>
-          <span className="demo-label">{t.demo}</span>
-        </div>
-      </header>
+    <main className="workspace dashboard-workspace">
+      <WorkspaceNavigation language={language} changeLanguage={changeLanguage} canEdit={canEdit} section="profile" />
       <DemoRoleSelector language={language} onContext={onDemoContext} />
       {!canEdit && <p className="demo-notice">{language === "pl" ? "Widok tylko do odczytu. Dodawanie i edycja aplikacji są dostępne dla HR i administratora." : "Read-only view. Intake and editing are available to HR and administrators."}</p>}
 

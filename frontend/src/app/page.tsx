@@ -1,4 +1,6 @@
 "use client";
+import WorkspaceNavigation from "@/components/WorkspaceNavigation";
+import { useLanguage } from "@/lib/useLanguage";
 
 import DemoRoleSelector from "@/components/DemoRoleSelector";
 import ApplicationCompleteness from "@/components/ApplicationCompleteness";
@@ -12,13 +14,12 @@ import {
   STATUS_LABELS,
 } from "@/lib/api";
 
-type Language = "pl" | "en";
+
 
 const TEXT = {
   pl: {
     recruitment: "Rekrutacja",
-    demo: "Wersja demonstracyjna",
-    title: "Przegląd rekrutacji",
+    title: "Dobre decyzje zaczynają się od ludzi.",
     subtitle: "Zarządzaj aplikacjami i kandydatami w oddziałach.",
     refresh: "Odśwież dane",
     notice: "Dane demonstracyjne — kandydaci i oddziały są przykładowe.",
@@ -55,8 +56,7 @@ const TEXT = {
   },
   en: {
     recruitment: "Recruitment",
-    demo: "Demo version",
-    title: "Recruitment overview",
+    title: "Great decisions start with people.",
     subtitle: "Manage applications and candidates across branches.",
     refresh: "Refresh data",
     notice: "Demo data — candidates and branches are fictional examples.",
@@ -112,7 +112,7 @@ const PAGE_SIZE = 20;
 export default function Home() {
   const [canEdit, setCanEdit] = useState(false);
   const onDemoContext = useCallback((context: { role: string }) => setCanEdit(context.role !== "branch_manager"), []);
-  const [language, setLanguage] = useState<Language>("pl");
+  const [language, changeLanguage] = useLanguage();
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [positions, setPositions] = useState<string[]>([]);
@@ -135,10 +135,6 @@ export default function Home() {
     return language === "en" ? EN_POSITIONS[value] ?? value : value;
   }
 
-  useEffect(() => {
-    const saved = localStorage.getItem("seka-language");
-    if (saved === "en" || saved === "pl") setLanguage(saved);
-  }, []);
 
   useEffect(() => {
     document.documentElement.lang = language;
@@ -147,10 +143,6 @@ export default function Home() {
       : "SEKA — Recruitment dashboard";
   }, [language]);
 
-  function changeLanguage(value: Language) {
-    setLanguage(value);
-    localStorage.setItem("seka-language", value);
-  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -221,53 +213,10 @@ export default function Home() {
 
   return (
     <main className="workspace dashboard-workspace">
-      <aside className="dashboard-sidebar">
-        <a className="sidebar-brand" href="/">SEKA</a>
-        <p className="sidebar-caption">
-          {language === "pl" ? "ZARZĄDZANIE REKRUTACJĄ" : "RECRUITMENT MANAGEMENT"}
-        </p>
-        <nav aria-label={language === "pl" ? "Nawigacja główna" : "Main navigation"}>
-          <a href="#overview">
-            {language === "pl" ? "Przegląd rekrutacji" : "Recruitment overview"}
-          </a>
-          <a href="#candidate-list">
-            {language === "pl" ? "Kandydaci" : "Candidates"}
-          </a>
-          {canEdit && <a href="/intake">
-            {language === "pl" ? "Dodaj aplikację e-mail" : "Add email application"}
-          </a>}
-        </nav>
-        <div className="sidebar-footer">
-          <span className="sidebar-avatar" aria-hidden="true">HR</span>
-          <div>
-            <strong>{language === "pl" ? "Przestrzeń HR" : "HR workspace"}</strong>
-            <p>{t.demo}</p>
-          </div>
-        </div>
-      </aside>
-      <header className="topbar">
-        <a href="/" className="brand">
-          SEKA<span>{t.recruitment}</span>
-        </a>
-        <div className="header-actions">
-          <div className="language-switch" role="group" aria-label={t.language}>
-            <button
-              className={language === "pl" ? "active" : ""}
-              aria-pressed={language === "pl"}
-              onClick={() => changeLanguage("pl")}
-            >Polski</button>
-            <button
-              className={language === "en" ? "active" : ""}
-              aria-pressed={language === "en"}
-              onClick={() => changeLanguage("en")}
-            >English</button>
-          </div>
-          <span className="demo-label">{t.demo}</span>
-        </div>
-      </header>
+      <WorkspaceNavigation language={language} changeLanguage={changeLanguage} canEdit={canEdit} section="overview" />
       <DemoRoleSelector language={language} onContext={onDemoContext} />
 
-      <section className="page-heading" id="overview">
+      <section className="page-heading overview-hero" id="overview">
         <div>
           <p className="eyebrow">{language === "pl" ? "PANEL HR" : "HR DASHBOARD"}</p>
           <h1>{t.title}</h1>
@@ -279,7 +228,7 @@ export default function Home() {
         </button>
       </section>
 
-      <p className="demo-notice">{t.notice}</p>
+
       {canEdit && <div className="intake-shortcut">
         <a className="secondary-button" href="/intake">
           {language === "pl" ? "+ Dodaj aplikację e-mail" : "+ Add email application"}
@@ -287,7 +236,7 @@ export default function Home() {
       </div>}
       {overviewError && <p className="error" role="alert">{t.error}</p>}
 
-      <section className="stats-grid" aria-label={t.title}>
+      <section className="stats-grid" aria-label={language === "pl" ? "Statystyki rekrutacji" : "Recruitment statistics"}>
         {cards.map((card, index) => (
           <button className="stat-card stat-filter" key={card.label}
             aria-pressed={status === ["", "new", "review", "interview", "hired", "rejected"][index]}
@@ -296,12 +245,17 @@ export default function Home() {
               setOffset(0);
               document.getElementById("candidate-list")?.scrollIntoView();
             }}>
-            <p>{card.label}</p>
+            <div className="stat-topline"><p>{card.label}</p><span aria-hidden="true">{["◎", "＋", "≡", "◷", "✓", "−"][index]}</span></div>
             <strong>{card.value ?? "—"}</strong>
           </button>
         ))}
       </section>
 
+      {dashboard && <section className="pipeline-panel" aria-label={language === "pl" ? "Struktura aplikacji" : "Application distribution"}>
+        <div className="pipeline-title"><strong>{language === "pl" ? "Struktura aplikacji" : "Application distribution"}</strong><span>{language === "pl" ? "Aktualny stan rekrutacji" : "Current recruitment snapshot"}</span></div>
+        <div className="pipeline-track">{(["new", "review", "interview", "hired", "rejected"] as CandidateStatus[]).map(key => dashboard.by_status[key] > 0 && <div key={key} className={`pipeline-segment pipeline-${key}`} style={{flex: dashboard.by_status[key]}} title={`${statusLabels[key]}: ${dashboard.by_status[key]}`} />)}</div>
+        <div className="pipeline-legend">{(["new", "review", "interview", "hired", "rejected"] as CandidateStatus[]).map(key => <span key={key}><i className={`pipeline-${key}`} />{statusLabels[key]} <strong>{dashboard.by_status[key]}</strong></span>)}</div>
+      </section>}
       {dashboard && (
         <section className="branch-summary" aria-label={t.city}>
           {dashboard.by_branch.map((branch) => (
