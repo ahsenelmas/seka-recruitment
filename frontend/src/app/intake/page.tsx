@@ -1,11 +1,13 @@
 "use client";
+import WorkspaceNavigation from "@/components/WorkspaceNavigation";
+import { useLanguage } from "@/lib/useLanguage";
 
 import DemoRoleSelector from "@/components/DemoRoleSelector";
 import ApplicationCompleteness from "@/components/ApplicationCompleteness";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { API_URL, apiGet, Branch, Candidate } from "@/lib/api";
 
-type Language = "pl" | "en";
+
 
 const TEXT = {
   pl: {
@@ -31,7 +33,6 @@ const TEXT = {
     invalid: "Wypełnij wymagane pola i użyj adresu example.com. Załącznik może mieć maksymalnie 5 MB.",
     success: "Profil kandydata został utworzony.",
     open: "Otwórz profil",
-    demo: "Wersja demonstracyjna",
   },
   en: {
     title: "Sample email application",
@@ -56,7 +57,6 @@ const TEXT = {
     invalid: "Complete the required fields and use an example.com address. Attachment limit: 5 MB.",
     success: "Candidate profile created successfully.",
     open: "Open profile",
-    demo: "Demo version",
   },
 };
 
@@ -72,7 +72,7 @@ const EMPTY = {
 
 export default function IntakePage() {
   const [canEdit, setCanEdit] = useState(false);
-  const [language, setLanguage] = useState<Language>("pl");
+  const [language, changeLanguage] = useLanguage();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [fields, setFields] = useState(EMPTY);
   const [file, setFile] = useState<File | null>(null);
@@ -85,10 +85,6 @@ export default function IntakePage() {
   const onDemoContext = useCallback((context: { role: string }) => setCanEdit(context.role !== "branch_manager"), []);
   const t = TEXT[language];
 
-  useEffect(() => {
-    const saved = localStorage.getItem("seka-language");
-    if (saved === "pl" || saved === "en") setLanguage(saved);
-  }, []);
 
   useEffect(() => {
     document.documentElement.lang = language;
@@ -106,10 +102,6 @@ export default function IntakePage() {
     return () => controller.abort();
   }, [retry]);
 
-  function changeLanguage(value: Language) {
-    setLanguage(value);
-    localStorage.setItem("seka-language", value);
-  }
 
   function update(name: keyof typeof EMPTY, value: string) {
     setFields((current) => ({ ...current, [name]: value }));
@@ -172,22 +164,8 @@ export default function IntakePage() {
   }
 
   return (
-    <main className="workspace">
-      <header className="topbar">
-        <a href="/" className="brand">SEKA</a>
-        <div className="header-actions">
-          <div className="language-switch" role="group"
-            aria-label={language === "pl" ? "Język interfejsu" : "Interface language"}>
-            <button className={language === "pl" ? "active" : ""}
-              aria-pressed={language === "pl"}
-              onClick={() => changeLanguage("pl")}>Polski</button>
-            <button className={language === "en" ? "active" : ""}
-              aria-pressed={language === "en"}
-              onClick={() => changeLanguage("en")}>English</button>
-          </div>
-          <span className="demo-label">{t.demo}</span>
-        </div>
-      </header>
+    <main className="workspace dashboard-workspace">
+      <WorkspaceNavigation language={language} changeLanguage={changeLanguage} canEdit={canEdit} section="intake" />
       <DemoRoleSelector language={language} onContext={onDemoContext} />
       {!canEdit && <p className="demo-notice">{language === "pl" ? "Widok tylko do odczytu. Dodawanie i edycja aplikacji są dostępne dla HR i administratora." : "Read-only view. Intake and editing are available to HR and administrators."}</p>}
 

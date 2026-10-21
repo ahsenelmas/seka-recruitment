@@ -1,9 +1,9 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "SEKA — Panel rekrutacji",
-  description: "System zarządzania rekrutacją — wersja demonstracyjna",
+  description: "SEKA — centrum zarządzania rekrutacją",
 };
 
 export default function RootLayout({
@@ -12,7 +12,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pl">
+    <html lang="pl" translate="no" className="notranslate">
+      <head><meta name="google" content="notranslate" /></head>
       <body>{children}</body>
     </html>
   );

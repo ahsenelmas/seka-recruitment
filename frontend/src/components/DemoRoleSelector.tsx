@@ -36,7 +36,8 @@ export default function DemoRoleSelector({ language, onContext }: {
       window.location.assign("/");
     } catch { setError(true); setBusy(false); }
   }
-  return <section className="demo-role-panel">
+  return <details className="demo-role-panel">
+    <summary>{pl ? "Widok i uprawnienia · symulacja ról" : "View and permissions · role simulation"}</summary>
     <div><strong>{pl ? "Symulacja ról" : "Role simulation"}</strong>
       <p className="muted-text">{pl ? "Tryb demonstracyjny bez logowania. Wybór roli nie jest uwierzytelnianiem." : "Demo without login. Choosing a role is not authentication."}</p></div>
     <div className="demo-role-controls">
@@ -54,8 +55,8 @@ export default function DemoRoleSelector({ language, onContext }: {
     </div>
     {adminOverview && <details>
       <summary style={{ cursor: "pointer", marginTop: 16 }}>{pl ? "Administrator — stan integracji" : "Administrator — integration status"}</summary>
-      <p className="muted-text">{pl ? "Logowanie Entra ID: niepołączone. Wysyłka e-mail: nieskonfigurowana. Zarządzanie użytkownikami i edycja konfiguracji będą dostępne po migracji do Laravel." : "Entra ID: not connected. Email delivery: not configured. User management and configuration editing will follow the Laravel migration."}</p>
+      <p className="muted-text">{pl ? "Logowanie Entra ID: niepołączone. Wysyłka e-mail: nieskonfigurowana. Zarządzanie użytkownikami i edycja konfiguracji nie są jeszcze dostępne." : "Entra ID: not connected. Email delivery: not configured. User management and configuration editing are not available yet."}</p>
     </details>}
     {error && <p className="error" role="alert">{pl ? "Nie udało się ustawić roli. Sprawdź połączenie z API." : "Could not set role. Check the API connection."}</p>}
-  </section>;
+  </details>;
 }
