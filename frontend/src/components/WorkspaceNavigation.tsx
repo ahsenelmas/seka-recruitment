@@ -1,11 +1,18 @@
 "use client";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { apiGet, type DemoContext } from "@/lib/api";
 import type { Language } from "@/lib/useLanguage";
 export default function WorkspaceNavigation({language, changeLanguage, canEdit, section}: {
   language: Language; changeLanguage: (value: Language) => void; canEdit: boolean;
   section: "overview" | "profile" | "intake";
 }) {
   const pl = language === "pl";
+  const [context,setContext]=useState<DemoContext|null>(null);
+  useEffect(()=>{const controller=new AbortController();apiGet<DemoContext>("/demo/context",controller.signal).then(setContext).catch(()=>{});return()=>controller.abort();},[]);
+  const roleLabel=context?.role==="admin"?(pl?"Administrator":"Administrator"):context?.role==="branch_manager"?(pl?"Kierownik oddziału":"Branch manager"):(pl?"Menedżer HR":"HR manager");
+  const branchLabel=context?.branches.find(b=>b.id===context.branch_id)?.city;
+
   return <>
     <aside className="dashboard-sidebar">
       <Link href="/" className="sidebar-brand">SEKA<span className="brand-mark" /></Link>
@@ -24,7 +31,7 @@ export default function WorkspaceNavigation({language, changeLanguage, canEdit, 
       <div className="header-actions"><div className="language-switch" role="group" aria-label={pl ? "Język interfejsu" : "Interface language"}>
         <button type="button" className={pl ? "active" : ""} aria-pressed={pl} onClick={() => changeLanguage("pl")}>Polski</button>
         <button type="button" className={!pl ? "active" : ""} aria-pressed={!pl} onClick={() => changeLanguage("en")}>English</button>
-      </div><span className="header-avatar" aria-hidden="true">HR</span></div>
+      </div><span className="workspace-role">{context ? roleLabel : (pl?"Ładowanie roli…":"Loading role…")}{branchLabel && <small>{branchLabel}</small>}</span><button type="button" className="secondary-button change-role" onClick={()=>{sessionStorage.removeItem("seka-demo-entered");window.location.assign("/login");}}>{pl?"Zmień rolę":"Change role"}</button></div>
     </header>
   </>;
 }
