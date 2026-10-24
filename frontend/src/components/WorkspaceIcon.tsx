@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 const PATHS: Record<string, string> = {
+  tasks: "M9 4h12 M9 12h12 M9 20h12 M2 3l2 2 3-3 M2 11l2 2 3-3 M2 19l2 2 3-3",
   overview: "M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z",
   inbox: "M3 5h18v14H3z M3 6l9 7 9-7",
   profile: "M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2 M9 3a4 4 0 110 8 4 4 0 010-8 M17 4a4 4 0 010 7 M22 21v-2a4 4 0 00-3-3.87",

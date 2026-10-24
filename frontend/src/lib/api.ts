@@ -84,6 +84,7 @@ export async function apiGet<T>(
 }
 
 export type DemoContext = {
+  employee: DemoEmployee | null;
   role: string;
   role_definition: RecruitmentRole;
   permissions: string[];
@@ -98,4 +99,5 @@ export type RecruitmentRole = {
   permissions: string[]; is_builtin: boolean; is_active: boolean; updated_at?: string;
 };
 export type PermissionDefinition = { code: string; label_pl: string; label_en: string };
-export type DemoCatalog = { roles: RecruitmentRole[]; branches: Branch[]; simulation: boolean };
+export type DemoEmployee = { id: string; name: string; email: string; role_code?: string; branch_id?: number | null };
+export type DemoCatalog = { employees: DemoEmployee[]; roles: RecruitmentRole[]; branches: Branch[]; simulation: boolean };
