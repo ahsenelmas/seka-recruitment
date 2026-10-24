@@ -32,6 +32,7 @@ class CandidateHistoryObserver
         if ($candidate->wasChanged('cv_storage_key') && $candidate->cv_storage_key) {
             $this->record($candidate, 'cv_uploaded', ['filename' => $candidate->cv_original_filename]);
         }
+        \App\Support\ApplicationWork::reconcileBranch($candidate);
     }
 
     private function record(Candidate $candidate, string $type, array $changes): void
