@@ -40,6 +40,22 @@ class Candidate extends Model
         'follow_up_email',
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (Candidate $candidate) {
+            $email = mb_strtolower(trim($candidate->email));
+            // The unique email index also protects simultaneous submissions.
+            $profile = Applicant::firstOrCreate(['email' => $email]);
+            $candidate->applicant_id = $profile->id;
+            $candidate->email = $email;
+        });
+    }
+
+    public function applicant(): BelongsTo
+    {
+        return $this->belongsTo(Applicant::class);
+    }
+
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);

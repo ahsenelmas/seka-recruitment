@@ -1124,3 +1124,23 @@ th { font-size: 10px; letter-spacing: .5px; }td { padding-top: 22px; padding-bot
 .login-roles { display: grid; gap: 10px; }.login-role { position: relative; display: flex; align-items: center; gap: 14px; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; cursor: pointer; background: #fff; }.login-role.selected { border-color: #4b7ab1; background: #f3f7fc; box-shadow: 0 0 0 2px #dbe6f470; }.login-role input { width: 16px; height: 16px; accent-color: #245fbd; flex-shrink: 0; padding: 0; }.login-role-icon { display: grid; place-items: center; flex-shrink: 0; width: 34px; height: 34px; font-size: 23px; color: #3c6287; background: #eaf0f8; border-radius: 9px; }.login-role strong { display: block; font-size: 13px; color: #243c56; }.login-role small { display: block; font-size: 11px; line-height: 1.6; font-weight: 400; color: #64748b; margin-top: 3px; }.login-branch { margin-top: 18px; }.login-submit { width: 100%; margin-top: 24px; min-height: 48px; }.login-disclosure { margin-top: 25px; padding-top: 20px; border-top: 1px solid #e2e8f0; }.login-disclosure strong { font-size: 11px; color: #526176; }.login-disclosure p { font-size: 11px; color: #7a8799; line-height: 1.8; margin-top: 7px; }.workspace-role { font-size: 11px; font-weight: 600; text-align: right; color: #3c5571; }.workspace-role small { display: block; font-weight: 400; }.change-role { font-size: 11px; min-height: 34px; padding: 7px 10px; }
 @media(max-width:1000px) { .login-story { padding: 40px; }.login-entry { padding: 25px 30px 40px; }.login-story h1 { font-size: 42px; } }
 @media(max-width:700px) { .login-layout { grid-template-columns: 1fr; }.login-story { padding: 24px; }.login-brand { font-size: 27px; }.login-story > div { padding: 30px 0 0; }.login-story h1 { font-size: 32px; max-width: 360px; }.login-story > div > p:not(.eyebrow), .login-features, .login-story-footer { display: none; }.login-story .eyebrow { margin-bottom: 10px; }.login-entry { padding: 20px 24px 40px; }.login-form-wrap { padding-top: 28px; }.login-form-wrap h2 { font-size: 27px; }.workspace-role { display: none; }.change-role { font-size: 10px; padding: 6px; }.header-actions { gap: 8px; }.topbar-breadcrumb > span:first-child, .topbar-breadcrumb > span:nth-child(2) { display: none; } }
+
+/* Applicant profile and application workspace */
+.application-workspace { display:grid; grid-template-columns:minmax(250px,310px) minmax(0,1fr); gap:24px; align-items:start; }
+.application-sidebar { padding:24px; position:sticky; top:20px; }
+.application-sidebar h2 { margin:8px 0 12px; font-size:1.2rem; }
+.application-detail { min-width:0; }
+.application-tabs { display:flex; gap:6px; padding:6px; margin-bottom:20px; background:#eef2f8; border:1px solid #dce3ee; border-radius:14px; flex-wrap:wrap; }
+.application-tabs button { flex:1; padding:12px 14px; border:0; border-radius:10px; color:#43516d; background:transparent; cursor:pointer; font:inherit; font-weight:600; }
+.application-tabs button[aria-pressed="true"] { background:#fff; color:#204caa; box-shadow:0 2px 8px #14264412; }
+.application-tabs button:focus-visible,.application-item:focus-visible { outline:3px solid #4978d9; outline-offset:3px; }
+.application-count { font-weight:700; font-size:.85rem; margin:24px 0 12px; }
+.application-list { padding:0; margin:0; list-style:none; display:grid; gap:12px; }
+.application-item { display:flex; flex-direction:column; align-items:flex-start; gap:10px; padding:16px; border:1px solid #dce3ee; border-radius:12px; text-decoration:none; color:inherit; }
+.application-item:hover { background:#f5f8fd; }
+.application-item.is-current { border-color:#4774d0; background:#eef4ff; box-shadow:inset 3px 0 #4774d0; }
+.application-item small { color:#66748a; }
+.application-profile-grid { grid-template-columns:minmax(0,1fr); }
+.application-workspace [hidden] { display:none !important; }
+.correspondence-notice { padding:16px 20px; background:#eef4ff; color:#334e7a; border-radius:12px; line-height:1.6; }
+@media (max-width:900px) { .application-workspace { grid-template-columns:1fr; } .application-sidebar { position:static; } .application-list { grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); } }

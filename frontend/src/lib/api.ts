@@ -27,6 +27,7 @@ export type FollowUpEmail = {
 
 export type Candidate = {
   id: string;
+  applicant_id?: string | null;
   first_name: string;
   last_name: string;
   email: string;

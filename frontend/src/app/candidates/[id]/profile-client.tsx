@@ -1,4 +1,5 @@
 "use client";
+import ApplicantApplications from "@/components/ApplicantApplications";
 import WorkspaceNavigation from "@/components/WorkspaceNavigation";
 import { useLanguage } from "@/lib/useLanguage";
 
@@ -103,6 +104,7 @@ export default function CandidateProfile() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<"saved" | "error" | null>(null);
   const [retry, setRetry] = useState(0);
+  const [view, setView] = useState<"overview" | "documents" | "correspondence" | "notes">("overview");
 
   const onDemoContext = useCallback((context: { role: string }) => setCanEdit(context.role !== "branch_manager"), []);
   const t = TEXT[language];
@@ -220,12 +222,27 @@ export default function CandidateProfile() {
             </span>
           </section>
 
+          <div className="application-workspace">
+          <ApplicantApplications candidate={candidate} language={language} dirty={dirty} />
+          <div className="application-detail">
+          <nav className="application-tabs" aria-label={language === "pl" ? "Szczegóły aplikacji" : "Application details"}>
+            {([
+              ["overview", language === "pl" ? "Przegląd" : "Overview"],
+              ["documents", language === "pl" ? "CV i dokumenty" : "CV & documents"],
+              ["notes", language === "pl" ? "Status i notatki" : "Status & notes"],
+              ["correspondence", language === "pl" ? "Korespondencja" : "Correspondence"],
+            ] as const).map(([key, label]) => <button type="button" key={key} aria-pressed={view === key} onClick={() => setView(key)}>{label}</button>)}
+          </nav>
+          <div hidden={view !== "overview"}>
           <section className="panel profile-card completeness-panel">
             <h2>{language === "pl" ? "Kompletność aplikacji" : "Application completeness"}</h2>
             <ApplicationCompleteness candidate={candidate} language={language} />
             {candidate.cv_validation_error && <p className="muted-text">{language === "pl" ? candidate.cv_validation_error : "The attachment could not be accepted. Upload a readable, unencrypted PDF."}</p>}
           </section>
 
+          </div>
+          <div hidden={view !== "correspondence"}>
+          <p className="correspondence-notice">{language === "pl" ? "Oryginalna wiadomość i podgląd odpowiedzi. Skrzynka nie jest połączona; wiadomości nie są wysyłane." : "Original message and reply preview. Mailbox is not connected; messages are not sent."}</p>
           <FollowUpEmailPreview
             key={`${candidate.id}-${candidate.updated_at}-${candidate.missing_information.join(",")}`}
             email={candidate.follow_up_email} language={language} dirty={dirty}
@@ -242,8 +259,11 @@ export default function CandidateProfile() {
             </section>
           )}
 
-          <div className="profile-grid">
-            <section className="panel profile-card">
+          {!candidate.email_subject && <p className="empty-state">{language === "pl" ? "Brak zapisanej wiadomości źródłowej." : "No original email recorded."}</p>}
+          </div>
+          <div className="profile-grid application-profile-grid">
+            <section className="panel profile-card" hidden={view !== "overview" && view !== "documents"}>
+              <div hidden={view !== "overview"}>
               <h2>{t.contact}</h2>
               <dl className="detail-list">
                 <div><dt>{t.email}</dt><dd>{candidate.email}</dd></div>
@@ -262,6 +282,9 @@ export default function CandidateProfile() {
                   )}</dd>
                 </div>
               </dl>
+              </div>
+              <div hidden={view !== "documents"}>
+              <h2>{t.cv}</h2>
               <CandidateCV
                 key={candidate.id}
                 readOnly={!canEdit}
@@ -279,9 +302,10 @@ export default function CandidateProfile() {
                   } : current);
                 }}
               />
+              </div>
             </section>
 
-            <section className="panel profile-card">
+            <section className="panel profile-card" hidden={view !== "notes"}>
               <h2>{t.process}</h2>
               <form className="profile-form" onSubmit={saveChanges}>
                 <label>{t.city}
@@ -329,6 +353,8 @@ export default function CandidateProfile() {
                 </button>
               </form>
             </section>
+          </div>
+          </div>
           </div>
         </>
       )}
