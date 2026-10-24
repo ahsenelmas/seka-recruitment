@@ -65,3 +65,7 @@ Route::post('/intake/sample-email', [
 Route::get('/applicants/{id}', [
     \App\Http\Controllers\ApplicantController::class, 'show',
 ])->whereUuid('id');
+
+Route::get('/candidates/{id}/history', [
+    \App\Http\Controllers\ApplicationHistoryController::class, 'index',
+])->whereUuid('id');

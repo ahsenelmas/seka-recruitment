@@ -1144,3 +1144,8 @@ th { font-size: 10px; letter-spacing: .5px; }td { padding-top: 22px; padding-bot
 .application-workspace [hidden] { display:none !important; }
 .correspondence-notice { padding:16px 20px; background:#eef4ff; color:#334e7a; border-radius:12px; line-height:1.6; }
 @media (max-width:900px) { .application-workspace { grid-template-columns:1fr; } .application-sidebar { position:static; } .application-list { grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); } }
+
+.history-list { list-style:none; padding:0; margin:24px 0; }
+.history-list > li { border-left:3px solid #5379c6; padding:4px 0 20px 20px; margin:0 0 18px; overflow-wrap:anywhere; }
+.history-list ul { padding-left:20px; line-height:1.8; }
+.history-pagination { display:flex; align-items:center; justify-content:space-between; gap:12px; }

@@ -40,8 +40,15 @@ class Candidate extends Model
         'follow_up_email',
     ];
 
+    // Keep the submission write and its history events in the same transaction.
+    public function save(array $options = [])
+    {
+        return \Illuminate\Support\Facades\DB::transaction(fn () => parent::save($options));
+    }
+
     protected static function booted(): void
     {
+        static::observe(\App\Observers\CandidateHistoryObserver::class);
         static::creating(function (Candidate $candidate) {
             $email = mb_strtolower(trim($candidate->email));
             // The unique email index also protects simultaneous submissions.
