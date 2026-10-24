@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import WorkspaceIcon from "@/components/WorkspaceIcon";
 import { useEffect, useState } from "react";
 import { apiGet, DemoContext } from "@/lib/api";
 import type { Language } from "@/lib/useLanguage";
 
-type Section = "overview" | "profile" | "intake" | "statuses" | "roles" | "system";
+type Section = "inbox" | "overview" | "profile" | "intake" | "statuses" | "roles" | "system";
 export default function WorkspaceNavigation({ language, changeLanguage, section }: {
   language: Language; changeLanguage: (value: Language) => void; canEdit: boolean; section: Section;
 }) {
@@ -20,14 +21,16 @@ export default function WorkspaceNavigation({ language, changeLanguage, section 
   const roleLabel = context ? (pl ? context.role_definition.label_pl : context.role_definition.label_en) : (pl ? "Ładowanie roli…" : "Loading role…");
   const branchLabel = context?.branches.find(branch => branch.id === context.branch_id)?.city;
   const title = {
+    inbox: pl ? "Skrzynka rekrutacyjna" : "Recruitment inbox",
     overview: pl ? "Przegląd rekrutacji" : "Recruitment overview",
     profile: pl ? "Profil kandydata" : "Candidate profile",
-    intake: pl ? "Nowa aplikacja" : "New application",
+    intake: pl ? "Przyjęcie e-mail" : "Email intake",
     statuses: pl ? "Statusy rekrutacji" : "Recruitment statuses",
     roles: pl ? "Role i uprawnienia" : "Roles & permissions",
     system: pl ? "Ustawienia systemu" : "System settings",
   };
   const links = [
+    { href: "/inbox", key: "inbox", label: pl ? "Skrzynka" : "Inbox", permission: "correspondence.view", icon: "inbox" },
     { href: "/", key: "overview", label: title.overview, permission: "applications.view", icon: "▦" },
     { href: "/#candidate-list", key: "profile", label: pl ? "Kandydaci" : "Candidates", permission: "applications.view", icon: "◎" },
     { href: "/intake", key: "intake", label: title.intake, permission: "intake.create", icon: "＋" },
@@ -41,9 +44,9 @@ export default function WorkspaceNavigation({ language, changeLanguage, section 
       <p className="sidebar-caption">{pl ? "CENTRUM REKRUTACJI" : "RECRUITMENT CENTRE"}</p>
       <p className="nav-caption">{pl ? "PRZESTRZEŃ ROBOCZA" : "WORKSPACE"}</p>
       <nav aria-label={pl ? "Nawigacja główna" : "Main navigation"}>
-        {links.filter(link => allows(link.permission)).map(link => <Link key={link.key} href={link.href} className={section === link.key ? "nav-active" : ""} aria-current={section === link.key ? "page" : undefined}><span aria-hidden="true">{link.icon}</span>{link.label}</Link>)}
+        {links.filter(link => allows(link.permission)).map(link => <Link key={link.key} href={link.href} className={section === link.key ? "nav-active" : ""} aria-current={section === link.key ? "page" : undefined}><WorkspaceIcon name={link.key} />{link.label}</Link>)}
       </nav>
-      <div className="sidebar-note"><span className="sidebar-note-line" /><strong>{pl ? "Ludzie. Możliwości. Rozwój." : "People. Opportunity. Growth."}</strong><p>{pl ? "Jedna przestrzeń dla zespołu SEKA." : "One workspace for the SEKA team."}</p></div>
+      <div className="sidebar-note mailbox-sidebar-note"><WorkspaceIcon name="inbox" /><strong>kariera@seka.pl</strong><p>{pl ? "Tryb symulacji · poczta niepołączona" : "Simulation · mailbox not connected"}</p></div>
       <div className="sidebar-footer"><span className="sidebar-avatar">S</span><div><strong>{roleLabel}</strong><p>SEKA · {branchLabel ?? (pl ? "Cała firma" : "Company-wide")}</p></div></div>
     </aside>
     <header className="topbar">

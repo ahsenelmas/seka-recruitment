@@ -58,6 +58,21 @@ class Candidate extends Model
         });
     }
 
+    public function messages(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ApplicationMessage::class);
+    }
+
+    public function attributesToArray(): array
+    {
+        $attributes = parent::attributesToArray();
+        $permissions = request()->attributes->get('seka_demo_permissions');
+        if (is_array($permissions) && ! in_array('correspondence.view', $permissions, true)) {
+            unset($attributes['email_subject'], $attributes['email_body']);
+        }
+        return $attributes;
+    }
+
     public function applicant(): BelongsTo
     {
         return $this->belongsTo(Applicant::class);

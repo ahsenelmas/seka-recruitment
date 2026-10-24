@@ -27,6 +27,7 @@ class RecruitmentRoleController extends Controller
             'is_active' => ['sometimes', 'required', 'boolean'],
         ]);
         abort_unless(in_array('applications.view', $data['permissions'], true), 422, 'Recruitment roles require applications.view.');
+        abort_if(in_array('correspondence.draft', $data['permissions'], true) && ! in_array('correspondence.view', $data['permissions'], true), 422, 'Reply drafts require correspondence.view.');
         abort_if(in_array('cv.upload', $data['permissions'], true) && ! in_array('cv.view', $data['permissions'], true), 422, 'CV upload requires cv.view.');
         abort_if($data['scope'] === 'branch' && array_intersect(['intake.create', 'applications.assign_branch'], $data['permissions']), 422, 'Intake and branch reassignment require company-wide scope.');
         return $data;

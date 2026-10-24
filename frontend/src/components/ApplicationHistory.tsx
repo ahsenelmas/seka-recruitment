@@ -5,8 +5,8 @@ import { apiGet } from "@/lib/api";
 
 type Event = { id: number; type: string; actor_role: string; simulated: boolean; created_at: string; changes: Record<string, unknown> };
 type Page = { data: Event[]; current_page: number; last_page: number };
-const TITLES: Record<string, [string, string]> = { application_created: ["Otrzymano aplikację", "Application created"], application_updated: ["Zaktualizowano aplikację", "Application updated"], cv_uploaded: ["Dodano dokument CV", "CV uploaded"] };
-const FIELDS: Record<string, [string, string]> = { status: ["Status", "Status"], branch_id: ["Identyfikator oddziału", "Branch ID"], position: ["Stanowisko", "Position"], hr_notes: ["Zmieniono notatki HR", "HR notes changed"], filename: ["Plik", "File"] };
+const TITLES: Record<string, [string, string]> = { reply_draft_created: ["Zapisano szkic odpowiedzi", "Reply draft saved"], reply_draft_updated: ["Zmieniono szkic odpowiedzi", "Reply draft updated"], sample_email_received: ["Dodano fikcyjną wiadomość", "Fictional message added"], application_created: ["Otrzymano aplikację", "Application created"], application_updated: ["Zaktualizowano aplikację", "Application updated"], cv_uploaded: ["Dodano dokument CV", "CV uploaded"] };
+const FIELDS: Record<string, [string, string]> = { message_id: ["Identyfikator wiadomości", "Message ID"], status: ["Status", "Status"], branch_id: ["Identyfikator oddziału", "Branch ID"], position: ["Stanowisko", "Position"], hr_notes: ["Zmieniono notatki HR", "HR notes changed"], filename: ["Plik", "File"] };
 const ROLES: Record<string, [string,string]> = { admin: ["Administrator", "Administrator"], hr_manager: ["HR", "HR manager"], branch_manager: ["Kierownik oddziału", "Branch manager"], system: ["System", "System"] };
 
 export default function ApplicationHistory({ candidateId, language, statusLabels }: { candidateId: string; language: "pl" | "en"; statusLabels: Record<string, string> }) {

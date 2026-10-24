@@ -81,3 +81,9 @@ Route::post('/admin/roles', [\App\Http\Controllers\RecruitmentRoleController::cl
 Route::patch('/admin/roles/{code}', [\App\Http\Controllers\RecruitmentRoleController::class, 'update']);
 Route::get('/system/settings', [\App\Http\Controllers\RecruitmentSettingsController::class, 'show']);
 Route::patch('/system/settings', [\App\Http\Controllers\RecruitmentSettingsController::class, 'update']);
+
+Route::get('/inbox', [\App\Http\Controllers\ApplicationMailboxController::class, 'inbox']);
+Route::get('/candidates/{id}/messages', [\App\Http\Controllers\ApplicationMailboxController::class, 'messages'])->whereUuid('id');
+Route::post('/candidates/{id}/messages', [\App\Http\Controllers\ApplicationMailboxController::class, 'createDraft'])->whereUuid('id');
+Route::post('/candidates/{id}/messages/sample-incoming', [\App\Http\Controllers\ApplicationMailboxController::class, 'sampleIncoming'])->whereUuid('id');
+Route::patch('/candidates/{id}/messages/{messageId}', [\App\Http\Controllers\ApplicationMailboxController::class, 'updateDraft'])->whereUuid('id')->whereUuid('messageId');

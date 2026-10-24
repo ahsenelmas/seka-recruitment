@@ -6,12 +6,14 @@ class RecruitmentPermissions
 {
     public const BUSINESS = [
         'applications.view', 'applications.edit_status', 'applications.edit_notes',
-        'applications.edit_position', 'applications.assign_branch', 'cv.view', 'cv.upload', 'intake.create',
+        'applications.edit_position', 'applications.assign_branch', 'cv.view', 'cv.upload', 'intake.create', 'correspondence.view', 'correspondence.draft',
     ];
 
     public static function catalog(): array
     {
         return [
+            ['code' => 'correspondence.view', 'label_pl' => 'Przegląd korespondencji', 'label_en' => 'View correspondence'],
+            ['code' => 'correspondence.draft', 'label_pl' => 'Tworzenie i edycja szkiców odpowiedzi', 'label_en' => 'Create and edit reply drafts'],
             ['code' => 'applications.view', 'label_pl' => 'Przegląd aplikacji i historii', 'label_en' => 'View applications and history'],
             ['code' => 'applications.edit_status', 'label_pl' => 'Zmiana statusu', 'label_en' => 'Change status'],
             ['code' => 'applications.edit_notes', 'label_pl' => 'Edycja notatek HR', 'label_en' => 'Edit HR notes'],

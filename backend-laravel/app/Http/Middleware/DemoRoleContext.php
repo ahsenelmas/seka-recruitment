@@ -45,7 +45,17 @@ class DemoRoleContext
         $path = trim($request->path(), '/');
         $permit = $selection || ($path === 'api/demo/context' && $method === 'GET');
         if (! $permit) {
-            if ($request->is('api/admin/roles', 'api/admin/roles/*')) $permit = $allowed('roles.manage');
+            if ($path === 'api/inbox' && $method === 'GET') $permit = $allowed('applications.view') && $allowed('correspondence.view');
+            elseif (preg_match('~^api/candidates/[^/]+/messages(?:/[^/]+)?$~', $path)) {
+                $permit = $allowed('applications.view') && $allowed('correspondence.view') && (
+                    $method === 'GET' ||
+                    (($method === 'POST' || $method === 'PATCH') && $allowed('correspondence.draft'))
+                );
+                if (str_ends_with($path, '/messages/sample-incoming')) {
+                    $permit = $method === 'POST' && $allowed('applications.view') && $allowed('correspondence.view') && $allowed('intake.create') && $role->scope === 'all';
+                }
+            }
+            elseif ($request->is('api/admin/roles', 'api/admin/roles/*')) $permit = $allowed('roles.manage');
             elseif ($request->is('api/admin/statuses', 'api/admin/statuses/*')) $permit = $allowed('statuses.manage');
             elseif ($request->is('api/system/settings', 'api/demo/admin-overview')) $permit = $allowed('system.configure');
             elseif ($path === 'api/statuses' && $method === 'GET') $permit = $allowed('applications.view') || $allowed('statuses.manage');

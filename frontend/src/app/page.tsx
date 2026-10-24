@@ -20,7 +20,7 @@ import {
 const TEXT = {
   pl: {
     recruitment: "Rekrutacja",
-    title: "Dobre decyzje zaczynają się od ludzi.",
+    title: "Przegląd rekrutacji",
     subtitle: "Zarządzaj aplikacjami i kandydatami w oddziałach.",
     refresh: "Odśwież dane",
     notice: "Dane demonstracyjne — kandydaci i oddziały są przykładowe.",
@@ -57,7 +57,7 @@ const TEXT = {
   },
   en: {
     recruitment: "Recruitment",
-    title: "Great decisions start with people.",
+    title: "Recruitment overview",
     subtitle: "Manage applications and candidates across branches.",
     refresh: "Refresh data",
     notice: "Demo data — candidates and branches are fictional examples.",
@@ -116,6 +116,7 @@ export default function Home() {
   const [city, setCity] = useState("");
   const [position, setPosition] = useState("");
   const [status, setStatus] = useState("");
+  const [attention, setAttention] = useState("");
   const [offset, setOffset] = useState(0);
   const [refresh, setRefresh] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -172,6 +173,7 @@ export default function Home() {
       if (city) params.set("city", city);
       if (position) params.set("position", position);
       if (status) params.set("status", status);
+      if (attention) params.set("attention", attention);
 
       apiGet<CandidatePage>(`/candidates?${params}`, controller.signal)
         .then(setPage)
@@ -187,13 +189,14 @@ export default function Home() {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [search, city, position, status, offset, refresh]);
+  }, [search, city, position, status, attention, offset, refresh]);
 
   function resetFilters() {
     setSearch("");
     setCity("");
     setPosition("");
     setStatus("");
+    setAttention("");
     setOffset(0);
   }
 
@@ -228,12 +231,20 @@ export default function Home() {
       {statusesError && <p className="error" role="alert">{language === "pl" ? "Nie udało się pobrać statusów. Odśwież dane." : "Could not load statuses. Refresh the data."}</p>}
       {overviewError && <p className="error" role="alert">{t.error}</p>}
 
+      {dashboard && <section className="attention-grid" aria-label={language === "pl" ? "Wymaga uwagi" : "Needs attention"}>
+        <button type="button" onClick={() => { resetFilters(); setAttention("incomplete"); document.getElementById("candidate-list")?.scrollIntoView(); }}><span className="attention-icon amber">!</span><div><strong>{dashboard.needs_information}</strong><span>{language === "pl" ? "Brakujące informacje" : "Missing information"}</span></div><span aria-hidden="true">↗</span></button>
+        <button type="button" onClick={() => { resetFilters(); setAttention("unassigned"); document.getElementById("candidate-list")?.scrollIntoView(); }}><span className="attention-icon blue">◎</span><div><strong>{dashboard.unassigned}</strong><span>{language === "pl" ? "Do przypisania" : "Unassigned applications"}</span></div><span aria-hidden="true">↗</span></button>
+        {dashboard.reply_drafts !== null && <a href="/inbox?filter=drafts"><span className="attention-icon purple">≡</span><div><strong>{dashboard.reply_drafts}</strong><span>{language === "pl" ? "Szkice odpowiedzi" : "Reply drafts"}</span></div><span aria-hidden="true">↗</span></a>}
+        {dashboard.conversations !== null && <a href="/inbox"><span className="attention-icon teal">✉</span><div><strong>{dashboard.conversations}</strong><span>{language === "pl" ? "Rozmowy" : "Conversations"}</span></div><span aria-hidden="true">↗</span></a>}
+      </section>}
+      {attention && <div className="active-attention" role="status">{language === "pl" ? "Filtr uwagi" : "Attention filter"}: {attention === "incomplete" ? (language === "pl" ? "Brakujące informacje" : "Missing information") : (language === "pl" ? "Do przypisania" : "Unassigned")}<button type="button" onClick={() => { setAttention(""); setOffset(0); }}>{language === "pl" ? "Wyczyść" : "Clear"}</button></div>}
       <section className="stats-grid" aria-label={language === "pl" ? "Statystyki rekrutacji" : "Recruitment statistics"}>
         {cards.map((card, index) => (
           <button className="stat-card stat-filter" key={card.code}
             aria-pressed={status === card.code}
             onClick={() => {
               setStatus(card.code);
+              setAttention("");
               setOffset(0);
               document.getElementById("candidate-list")?.scrollIntoView();
             }}>
