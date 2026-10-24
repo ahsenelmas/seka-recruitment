@@ -1,15 +1,12 @@
 export const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001/api";
 
-export const STATUS_LABELS = {
-  new: "Nowa aplikacja",
-  review: "W trakcie analizy",
-  interview: "Rozmowa kwalifikacyjna",
-  hired: "Zatrudniony",
-  rejected: "Odrzucony",
-};
+export type CandidateStatus = string;
 
-export type CandidateStatus = keyof typeof STATUS_LABELS;
+export type RecruitmentStatus = {
+  code: string; label_pl: string; label_en: string; color: string;
+  sort_order: number; is_active: boolean;
+};
 
 export type Branch = {
   id: number;
@@ -84,8 +81,18 @@ export async function apiGet<T>(
 }
 
 export type DemoContext = {
-  role: "admin" | "hr_manager" | "branch_manager";
+  role: string;
+  role_definition: RecruitmentRole;
+  permissions: string[];
+  scope: "all" | "branch";
   branch_id: number | null;
   simulation: boolean;
   branches: Branch[];
 };
+
+export type RecruitmentRole = {
+  code: string; label_pl: string; label_en: string; scope: "all" | "branch";
+  permissions: string[]; is_builtin: boolean; is_active: boolean; updated_at?: string;
+};
+export type PermissionDefinition = { code: string; label_pl: string; label_en: string };
+export type DemoCatalog = { roles: RecruitmentRole[]; branches: Branch[]; simulation: boolean };

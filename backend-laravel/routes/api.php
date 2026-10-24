@@ -69,3 +69,15 @@ Route::get('/applicants/{id}', [
 Route::get('/candidates/{id}/history', [
     \App\Http\Controllers\ApplicationHistoryController::class, 'index',
 ])->whereUuid('id');
+
+Route::get('/statuses', [\App\Http\Controllers\RecruitmentStatusController::class, 'index']);
+Route::post('/admin/statuses', [\App\Http\Controllers\RecruitmentStatusController::class, 'store']);
+Route::post('/admin/statuses/reorder', [\App\Http\Controllers\RecruitmentStatusController::class, 'reorder']);
+Route::patch('/admin/statuses/{code}', [\App\Http\Controllers\RecruitmentStatusController::class, 'update']);
+
+Route::get('/demo/catalog', [\App\Http\Controllers\DemoContextController::class, 'catalog']);
+Route::get('/admin/roles', [\App\Http\Controllers\RecruitmentRoleController::class, 'index']);
+Route::post('/admin/roles', [\App\Http\Controllers\RecruitmentRoleController::class, 'store']);
+Route::patch('/admin/roles/{code}', [\App\Http\Controllers\RecruitmentRoleController::class, 'update']);
+Route::get('/system/settings', [\App\Http\Controllers\RecruitmentSettingsController::class, 'show']);
+Route::patch('/system/settings', [\App\Http\Controllers\RecruitmentSettingsController::class, 'update']);
