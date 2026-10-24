@@ -1,4 +1,5 @@
 "use client";
+import IntakeReview from "@/components/IntakeReview";
 import WorkspaceNavigation from "@/components/WorkspaceNavigation";
 import { useLanguage } from "@/lib/useLanguage";
 
@@ -71,6 +72,7 @@ const EMPTY = {
 };
 
 export default function IntakePage() {
+  const [reviewed, setReviewed] = useState(false);
   const [canEdit, setCanEdit] = useState(false);
   const [language, changeLanguage] = useLanguage();
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -104,27 +106,29 @@ export default function IntakePage() {
 
 
   function update(name: keyof typeof EMPTY, value: string) {
+    setReviewed(false);
     setFields((current) => ({ ...current, [name]: value }));
     setError(null);
   }
 
   function fillSample() {
+    setReviewed(false);
     const branch = branches.find((item) => item.city === "Warszawa") ?? branches[0];
     setFields({
-      first_name: "Michał",
-      last_name: "Lewandowski",
+      first_name: "",
+      last_name: "",
       email: "michal.lewandowski@example.com",
-      position: "Koordynator szkoleń",
-      branch_id: branch ? String(branch.id) : "",
+      position: "",
+      branch_id: "",
       email_subject: "Aplikacja — Koordynator szkoleń",
-      email_body: "Dzień dobry,\nchciałbym zgłosić swoją kandydaturę na stanowisko koordynatora szkoleń. W załączniku przesyłam CV.\nPozdrawiam,\nMichał Lewandowski",
+      email_body: `Dzień dobry,\nprzesyłam spontaniczną aplikację.\nImię: Michał\nNazwisko: Lewandowski\nStanowisko: Koordynator szkoleń\nMiasto: ${branch?.city ?? "Warszawa"}\nPozdrawiam,\nMichał Lewandowski`,
     });
     setError(null);
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (submitting.current || created || !canEdit) return;
+    if (submitting.current || created || !canEdit || !reviewed) return;
 
     if (
       [fields.first_name, fields.last_name, fields.email, fields.email_subject, fields.email_body].some((value) => !value.trim()) ||
@@ -239,14 +243,17 @@ export default function IntakePage() {
                   <input type="file" accept=".pdf,application/pdf"
                     onChange={(e) => {
                       setFile(e.target.files?.[0] ?? null);
+                      setReviewed(false);
                       setError(null);
                     }} />
                 </label>
               </div>
+              <IntakeReview email={fields.email} subject={fields.email_subject} body={fields.email_body} file={file} values={fields} apply={update} language={language} />
               <p className="muted-text">{t.hint}</p>
+              <label className="intake-confirm"><input type="checkbox" required checked={reviewed} onChange={event => setReviewed(event.target.checked)} />{language === "pl" ? "Sprawdziłem/am dane z wiadomością i CV. Brakujące dane pozostawiłem/am do uzupełnienia." : "I checked these details against the email and CV, leaving missing information for follow-up."}</label>
               {error && <p className="error" role="alert">{t[error]}</p>}
               <button className="primary-button" type="submit"
-                disabled={saving || !branches.length}>
+                disabled={saving || !branches.length || !reviewed}>
                 {saving ? t.saving : t.submit}
               </button>
             </fieldset>

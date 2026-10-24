@@ -94,3 +94,5 @@ Route::get('/candidates/{id}/work', [\App\Http\Controllers\ApplicationWorkContro
 Route::patch('/candidates/{id}/work', [\App\Http\Controllers\ApplicationWorkController::class, 'owner'])->whereUuid('id');
 Route::post('/candidates/{id}/tasks', [\App\Http\Controllers\ApplicationWorkController::class, 'store'])->whereUuid('id');
 Route::patch('/candidates/{id}/tasks/{taskId}', [\App\Http\Controllers\ApplicationWorkController::class, 'update'])->whereUuid('id')->whereUuid('taskId');
+
+Route::post('/intake/preview', \App\Http\Controllers\IntakePreviewController::class)->middleware('throttle:10,1');
