@@ -1,4 +1,5 @@
 "use client";
+import ApplicationHistory from "@/components/ApplicationHistory";
 import ApplicantApplications from "@/components/ApplicantApplications";
 import WorkspaceNavigation from "@/components/WorkspaceNavigation";
 import { useLanguage } from "@/lib/useLanguage";
@@ -104,7 +105,7 @@ export default function CandidateProfile() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<"saved" | "error" | null>(null);
   const [retry, setRetry] = useState(0);
-  const [view, setView] = useState<"overview" | "documents" | "correspondence" | "notes">("overview");
+  const [view, setView] = useState<"overview" | "documents" | "correspondence" | "notes" | "history">("overview");
 
   const onDemoContext = useCallback((context: { role: string }) => setCanEdit(context.role !== "branch_manager"), []);
   const t = TEXT[language];
@@ -231,8 +232,10 @@ export default function CandidateProfile() {
               ["documents", language === "pl" ? "CV i dokumenty" : "CV & documents"],
               ["notes", language === "pl" ? "Status i notatki" : "Status & notes"],
               ["correspondence", language === "pl" ? "Korespondencja" : "Correspondence"],
+              ["history", language === "pl" ? "Historia" : "History"],
             ] as const).map(([key, label]) => <button type="button" key={key} aria-pressed={view === key} onClick={() => setView(key)}>{label}</button>)}
           </nav>
+          {view === "history" && <ApplicationHistory key={`${candidate.id}-${candidate.updated_at}`} candidateId={candidate.id} language={language} />}
           <div hidden={view !== "overview"}>
           <section className="panel profile-card completeness-panel">
             <h2>{language === "pl" ? "Kompletność aplikacji" : "Application completeness"}</h2>
