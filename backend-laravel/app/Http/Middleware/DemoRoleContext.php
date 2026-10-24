@@ -69,7 +69,7 @@ class DemoRoleContext
             elseif ($request->is('api/admin/statuses', 'api/admin/statuses/*')) $permit = $allowed('statuses.manage');
             elseif ($request->is('api/system/settings', 'api/demo/admin-overview')) $permit = $allowed('system.configure');
             elseif ($path === 'api/statuses' && $method === 'GET') $permit = $allowed('applications.view') || $allowed('statuses.manage');
-            elseif ($path === 'api/intake/sample-email' && $method === 'POST') $permit = $allowed('intake.create') && $role->scope === 'all';
+            elseif (in_array($path, ['api/intake/sample-email', 'api/intake/preview'], true) && $method === 'POST') $permit = $allowed('intake.create') && $role->scope === 'all';
             elseif (preg_match('~^api/candidates/[^/]+/cv$~', $path)) {
                 $permit = $allowed('applications.view') && (($method === 'GET' && $allowed('cv.view')) || ($method === 'POST' && $allowed('cv.upload')));
             } elseif ($method === 'PATCH' && preg_match('~^api/candidates/[^/]+$~', $path)) {
