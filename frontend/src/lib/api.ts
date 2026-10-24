@@ -34,8 +34,8 @@ export type Candidate = {
   status: CandidateStatus;
   hr_notes: string;
   source: string;
-  email_subject: string | null;
-  email_body: string | null;
+  email_subject?: string | null;
+  email_body?: string | null;
   missing_information: string[];
   is_complete: boolean;
   follow_up_email: FollowUpEmail;
@@ -53,6 +53,9 @@ export type CandidatePage = {
 };
 
 export type Dashboard = {
+  needs_information: number;
+  conversations: number | null;
+  reply_drafts: number | null;
   unassigned: number;
   total: number;
   by_status: Record<CandidateStatus, number>;

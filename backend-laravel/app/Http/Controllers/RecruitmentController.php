@@ -32,6 +32,7 @@ class RecruitmentController extends Controller
             ],
             'limit' => ['sometimes', 'integer', 'min:1', 'max:100'],
             'offset' => ['sometimes', 'integer', 'min:0'],
+            'attention' => ['nullable', Rule::in(['incomplete', 'unassigned'])],
         ]);
 
         $query = Candidate::query()->with('branch');
@@ -69,6 +70,8 @@ class RecruitmentController extends Controller
             }
         }
 
+        if (($filters['attention'] ?? '') === 'unassigned') $query->whereNull('branch_id');
+        if (($filters['attention'] ?? '') === 'incomplete') $query->where(fn ($q) => $q->whereNull('cv_storage_key')->orWhereNotNull('cv_validation_error')->orWhereNull('branch_id')->orWhereNull('position')->orWhereRaw("trim(position) = ''"));
         $total = (clone $query)->count();
         $limit = (int) ($filters['limit'] ?? 20);
         $offset = (int) ($filters['offset'] ?? 0);
@@ -138,6 +141,9 @@ class RecruitmentController extends Controller
             'total' => array_sum($statuses),
             'by_status' => $statuses,
             'unassigned' => Candidate::whereNull('branch_id')->count(),
+            'needs_information' => Candidate::where(fn ($q) => $q->whereNull('cv_storage_key')->orWhereNotNull('cv_validation_error')->orWhereNull('branch_id')->orWhereNull('position')->orWhereRaw("trim(position) = ''"))->count(),
+            'conversations' => in_array('correspondence.view', request()->attributes->get('seka_demo_permissions', []), true) ? Candidate::whereHas('messages')->count() : null,
+            'reply_drafts' => in_array('correspondence.view', request()->attributes->get('seka_demo_permissions', []), true) ? \App\Models\ApplicationMessage::where('direction', 'outbound')->where('delivery_status', 'draft')->whereIn('candidate_id', Candidate::select('id'))->count() : null,
             'by_branch' => $branches,
         ]);
     }

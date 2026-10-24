@@ -10,6 +10,7 @@ class CandidateHistoryObserver
     public function created(Candidate $candidate): void
     {
         $this->record($candidate, 'application_created', []);
+        \App\Support\ApplicationMailbox::captureOriginal($candidate);
         if ($candidate->cv_storage_key) {
             $this->record($candidate, 'cv_uploaded', ['filename' => $candidate->cv_original_filename]);
         }

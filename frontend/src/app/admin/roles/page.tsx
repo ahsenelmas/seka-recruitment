@@ -11,6 +11,14 @@ type Draft = { code: string; label_pl: string; label_en: string; scope: "all" | 
 const EMPTY: Draft = { code: "", label_pl: "", label_en: "", scope: "branch", permissions: ["applications.view"], is_active: true };
 function RoleForm({ initial, definitions, pl, busy, submit, creating = false }: { initial: Draft; definitions: PermissionDefinition[]; pl: boolean; busy: boolean; submit: (draft: Draft) => void; creating?: boolean }) {
   const [draft, setDraft] = useState(initial);
+  function toggle(code: string, checked: boolean) {
+    let permissions = checked ? [...draft.permissions, code] : draft.permissions.filter(item => item !== code);
+    if (checked && code === "correspondence.draft") permissions.push("correspondence.view");
+    if (!checked && code === "correspondence.view") permissions = permissions.filter(item => item !== "correspondence.draft");
+    if (checked && code === "cv.upload") permissions.push("cv.view");
+    if (!checked && code === "cv.view") permissions = permissions.filter(item => item !== "cv.upload");
+    setDraft({ ...draft, permissions: [...new Set(permissions)] });
+  }
   function save(event: FormEvent) { event.preventDefault(); submit(draft); }
   return <form onSubmit={save}><fieldset disabled={busy} className="role-fieldset">
     <div className="status-admin-fields">
@@ -19,8 +27,8 @@ function RoleForm({ initial, definitions, pl, busy, submit, creating = false }: 
       <label>English<input required maxLength={100} value={draft.label_en} onChange={e => setDraft({ ...draft, label_en: e.target.value })} /></label>
       <label>{pl ? "Zakres" : "Scope"}<select value={draft.scope} onChange={e => setDraft({ ...draft, scope: e.target.value as Draft["scope"], permissions: e.target.value === "branch" ? draft.permissions.filter(code => !["intake.create", "applications.assign_branch"].includes(code)) : draft.permissions })}><option value="branch">{pl ? "Wybrany oddział" : "Selected branch"}</option><option value="all">{pl ? "Cała firma" : "Company-wide"}</option></select></label>
     </div>
-    <div className="role-permission-grid">{definitions.map(permission => <label key={permission.code}><input type="checkbox" checked={draft.permissions.includes(permission.code)} disabled={permission.code === "applications.view" || (draft.scope === "branch" && ["intake.create", "applications.assign_branch"].includes(permission.code))} onChange={e => setDraft({ ...draft, permissions: e.target.checked ? [...draft.permissions, permission.code] : draft.permissions.filter(code => code !== permission.code) })} /><span>{pl ? permission.label_pl : permission.label_en}</span></label>)}</div>
-    <p className="muted-text">{pl ? "Zakres oddziałowy nie pozwala na przyjęcie aplikacji ani przenoszenie między oddziałami. Przesyłanie CV wymaga prawa otwierania CV." : "Branch scope excludes intake and branch reassignment. Uploading CVs requires permission to open CVs."}</p>
+    <div className="role-permission-grid">{definitions.map(permission => <label key={permission.code}><input type="checkbox" checked={draft.permissions.includes(permission.code)} disabled={permission.code === "applications.view" || (draft.scope === "branch" && ["intake.create", "applications.assign_branch"].includes(permission.code))} onChange={e => toggle(permission.code, e.target.checked)} /><span>{pl ? permission.label_pl : permission.label_en}</span></label>)}</div>
+    <p className="muted-text">{pl ? "Zakres oddziałowy nie pozwala na przyjęcie aplikacji ani przenoszenie między oddziałami. Przesyłanie CV wymaga prawa otwierania CV. Szkice wymagają przeglądu korespondencji." : "Branch scope excludes intake and branch reassignment. Uploading CVs requires permission to open CVs. Drafts require permission to view correspondence."}</p>
     <button type="submit" className="primary-button">{creating ? (pl ? "Utwórz rolę" : "Create role") : (pl ? "Zapisz uprawnienia" : "Save permissions")}</button>
   </fieldset></form>;
 }

@@ -1,5 +1,6 @@
 "use client";
 import { useStatuses } from "@/lib/useStatuses";
+import ApplicationConversation from "@/components/ApplicationConversation";
 import ApplicationHistory from "@/components/ApplicationHistory";
 import ApplicantApplications from "@/components/ApplicantApplications";
 import WorkspaceNavigation from "@/components/WorkspaceNavigation";
@@ -9,7 +10,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import DemoRoleSelector from "@/components/DemoRoleSelector";
 import ApplicationCompleteness from "@/components/ApplicationCompleteness";
-import FollowUpEmailPreview from "@/components/FollowUpEmailPreview";
 import CandidateCV from "@/components/CandidateCV";
 import {
   API_URL,
@@ -87,7 +87,9 @@ const EN_POSITIONS: Record<string, string> = {
 
 export default function CandidateProfile() {
   const { id } = useParams<{ id: string }>();
-  const [permissions, setPermissions] = useState<string[]>([]);
+  const [conversationDirty, setConversationDirty] = useState(false);
+  const [context, setContext] = useState<DemoContext | null>(null);
+  const permissions = context?.permissions ?? [];
   const allowed = (permission: string) => permissions.includes(permission);
   const canEdit = ["applications.edit_status", "applications.edit_notes", "applications.edit_position", "applications.assign_branch"].some(permission => permissions.includes(permission));
   const [language, changeLanguage] = useLanguage();
@@ -104,7 +106,7 @@ export default function CandidateProfile() {
   const [retry, setRetry] = useState(0);
   const [view, setView] = useState<"overview" | "documents" | "correspondence" | "notes" | "history">("overview");
 
-  const onDemoContext = useCallback((context: DemoContext) => setPermissions(context.permissions), []);
+  const onDemoContext = useCallback((context: DemoContext) => setContext(context), []);
   const t = TEXT[language];
   const { statuses, labels: statusLabels, badgeStyle, error: statusesError } = useStatuses(language, retry);
   const dirty = candidate !== null &&
@@ -228,7 +230,7 @@ export default function CandidateProfile() {
 
           {statusesError && <p className="error" role="alert">{language === "pl" ? "Nie udało się pobrać statusów. Odśwież stronę." : "Could not load statuses. Refresh the page."}</p>}
           <div className="application-workspace">
-          <ApplicantApplications candidate={candidate} language={language} dirty={dirty} statusLabels={statusLabels} badgeStyle={badgeStyle} />
+          <ApplicantApplications candidate={candidate} language={language} dirty={dirty || conversationDirty} statusLabels={statusLabels} badgeStyle={badgeStyle} />
           <div className="application-detail">
           <nav className="application-tabs" aria-label={language === "pl" ? "Szczegóły aplikacji" : "Application details"}>
             {([
@@ -237,7 +239,7 @@ export default function CandidateProfile() {
               ["notes", language === "pl" ? "Status i notatki" : "Status & notes"],
               ["correspondence", language === "pl" ? "Korespondencja" : "Correspondence"],
               ["history", language === "pl" ? "Historia" : "History"],
-            ] as const).map(([key, label]) => <button type="button" key={key} aria-pressed={view === key} onClick={() => setView(key)}>{label}</button>)}
+            ] as const).map(([key, label]) => <button type="button" key={key} aria-pressed={view === key} onClick={() => { if (key !== view && conversationDirty && !window.confirm(language === "pl" ? "Opuścić rozmowę bez zapisania zmian?" : "Leave the conversation without saving changes?")) return; setView(key); }}>{label}</button>)}
           </nav>
           {view === "history" && <ApplicationHistory key={`${candidate.id}-${candidate.updated_at}`} candidateId={candidate.id} language={language} statusLabels={statusLabels} />}
           <div hidden={view !== "overview"}>
@@ -248,26 +250,7 @@ export default function CandidateProfile() {
           </section>
 
           </div>
-          <div hidden={view !== "correspondence"}>
-          <p className="correspondence-notice">{language === "pl" ? "Oryginalna wiadomość i podgląd odpowiedzi. Skrzynka nie jest połączona; wiadomości nie są wysyłane." : "Original message and reply preview. Mailbox is not connected; messages are not sent."}</p>
-          <FollowUpEmailPreview
-            key={`${candidate.id}-${candidate.updated_at}-${candidate.missing_information.join(",")}`}
-            email={candidate.follow_up_email} language={language} dirty={dirty}
-          />
-
-          {candidate.email_subject && (
-            <section className="panel profile-card email-original">
-              <h2>{language === "pl" ? "Oryginalna wiadomość e-mail" : "Original email"}</h2>
-              <p className="muted-text">
-                {language === "pl" ? "Nadawca" : "Sender"}: {candidate.email}
-              </p>
-              <h3>{candidate.email_subject}</h3>
-              <p className="email-body">{candidate.email_body}</p>
-            </section>
-          )}
-
-          {!candidate.email_subject && <p className="empty-state">{language === "pl" ? "Brak zapisanej wiadomości źródłowej." : "No original email recorded."}</p>}
-          </div>
+          {view === "correspondence" && (context?.permissions.includes("correspondence.view") ? <ApplicationConversation key={candidate.id} candidateId={candidate.id} language={language} context={context} onDirtyChange={setConversationDirty} /> : <p className="empty-state">{language === "pl" ? "Brak dostępu do korespondencji." : "You cannot view correspondence."}</p>)}
           <div className="profile-grid application-profile-grid">
             <section className="panel profile-card" hidden={view !== "overview" && view !== "documents"}>
               <div hidden={view !== "overview"}>
