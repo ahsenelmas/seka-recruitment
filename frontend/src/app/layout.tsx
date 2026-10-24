@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import "./workspace-v2.css";
 import { Suspense } from "react";
 import DemoAccessBoundary from "@/components/DemoAccessBoundary";
 

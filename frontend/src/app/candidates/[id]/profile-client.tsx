@@ -1,5 +1,6 @@
 "use client";
 import { useStatuses } from "@/lib/useStatuses";
+import ApplicationWorkPanel from "@/components/ApplicationWorkPanel";
 import ApplicationConversation from "@/components/ApplicationConversation";
 import ApplicationHistory from "@/components/ApplicationHistory";
 import ApplicantApplications from "@/components/ApplicantApplications";
@@ -7,7 +8,7 @@ import WorkspaceNavigation from "@/components/WorkspaceNavigation";
 import { useLanguage } from "@/lib/useLanguage";
 
 import { useCallback, useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import DemoRoleSelector from "@/components/DemoRoleSelector";
 import ApplicationCompleteness from "@/components/ApplicationCompleteness";
 import CandidateCV from "@/components/CandidateCV";
@@ -25,7 +26,7 @@ import {
 const TEXT = {
   pl: {
     title: "Profil kandydata",
-    back: "← Wróć do kandydatów",
+    back: "← Wróć do aplikacji",
     contact: "Dane kontaktowe",
     email: "E-mail",
     phone: "Telefon",
@@ -51,7 +52,7 @@ const TEXT = {
   },
   en: {
     title: "Candidate profile",
-    back: "← Back to candidates",
+    back: "← Back to applications",
     contact: "Contact details",
     email: "Email",
     phone: "Phone",
@@ -85,8 +86,11 @@ const EN_POSITIONS: Record<string, string> = {
   "Specjalista ds. administracji": "Administration specialist",
 };
 
-export default function CandidateProfile() {
-  const { id } = useParams<{ id: string }>();
+export default function CandidateProfile({ candidateId, embedded = false, onDirtyChange, onSaved }: { candidateId?: string; embedded?: boolean; onDirtyChange?: (dirty: boolean) => void; onSaved?: (candidate: Candidate) => void } = {}) {
+  const routeParams = useParams<{ id: string }>();
+  const id = candidateId ?? routeParams.id;
+  const searchParams = useSearchParams();
+  const [workDirty, setWorkDirty] = useState(false);
   const [conversationDirty, setConversationDirty] = useState(false);
   const [context, setContext] = useState<DemoContext | null>(null);
   const permissions = context?.permissions ?? [];
@@ -104,7 +108,7 @@ export default function CandidateProfile() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<"saved" | "error" | null>(null);
   const [retry, setRetry] = useState(0);
-  const [view, setView] = useState<"overview" | "documents" | "correspondence" | "notes" | "history">("overview");
+  const [view, setView] = useState<"overview" | "documents" | "correspondence" | "notes" | "history" | "work">(searchParams.get("tab") === "work" ? "work" : "overview");
 
   const onDemoContext = useCallback((context: DemoContext) => setContext(context), []);
   const t = TEXT[language];
@@ -113,11 +117,23 @@ export default function CandidateProfile() {
     (status !== candidate.status || notes !== candidate.hr_notes ||
       branchId !== String(candidate.branch?.id ?? "") || position !== (candidate.position ?? ""));
 
+  useEffect(() => {
+    if (!embedded) return;
+    const controller = new AbortController();
+    apiGet<DemoContext>("/demo/context", controller.signal).then(value => { if (!controller.signal.aborted) setContext(value); }).catch(() => {});
+    return () => controller.abort();
+  }, [embedded]);
+  useEffect(() => {
+    onDirtyChange?.(dirty || conversationDirty || workDirty);
+    return () => onDirtyChange?.(false);
+  }, [dirty, conversationDirty, workDirty, onDirtyChange]);
+  const Container = embedded ? "section" : "main";
+
 
   useEffect(() => {
     document.documentElement.lang = language;
-    document.title = `SEKA — ${TEXT[language].title}`;
-  }, [language]);
+    if (!embedded) document.title = `SEKA — ${TEXT[language].title}`;
+  }, [language, embedded]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -182,6 +198,7 @@ export default function CandidateProfile() {
 
       const updated: Candidate = await response.json();
       setCandidate(updated);
+      onSaved?.(updated);
       setBranchId(String(updated.branch?.id ?? ""));
       setPosition(updated.position ?? "");
       setStatus(updated.status);
@@ -195,12 +212,12 @@ export default function CandidateProfile() {
   }
 
   return (
-    <main className="workspace dashboard-workspace">
-      <WorkspaceNavigation language={language} changeLanguage={changeLanguage} canEdit={canEdit} section="profile" />
-      <DemoRoleSelector language={language} onContext={onDemoContext} />
-      {!canEdit && <p className="demo-notice">{language === "pl" ? "Brak uprawnień do edycji pól tej aplikacji." : "You do not have permission to edit this application’s fields."}</p>}
+    <Container className={embedded ? "embedded-profile" : "workspace dashboard-workspace"}>
+      {!embedded && <WorkspaceNavigation language={language} changeLanguage={changeLanguage} canEdit={canEdit} section="profile" />}
+      {!embedded && <DemoRoleSelector language={language} onContext={onDemoContext} />}
+      {!embedded && !canEdit && <p className="demo-notice">{language === "pl" ? "Brak uprawnień do edycji pól tej aplikacji." : "You do not have permission to edit this application’s fields."}</p>}
 
-      <a href="/" className="back-link">{t.back}</a>
+      {!embedded && <a href="/applications" className="back-link">{t.back}</a>}
 
       {loading ? (
         <p className="empty-state">{t.loading}</p>
@@ -223,14 +240,14 @@ export default function CandidateProfile() {
                 {" · "}{candidate.branch?.city ?? t.missing}
               </p>
             </div>
-            <span className={`status-badge status-${candidate.status}`} style={badgeStyle(candidate.status)}>
+            <div className="profile-heading-actions">{embedded && <a className="secondary-button" href={`/candidates/${id}`}>{language === "pl" ? "Pełny profil ↗" : "Full profile ↗"}</a>}<span className={`status-badge status-${candidate.status}`} style={badgeStyle(candidate.status)}>
               {statusLabels[candidate.status] ?? candidate.status}
-            </span>
+            </span></div>
           </section>
 
           {statusesError && <p className="error" role="alert">{language === "pl" ? "Nie udało się pobrać statusów. Odśwież stronę." : "Could not load statuses. Refresh the page."}</p>}
           <div className="application-workspace">
-          <ApplicantApplications candidate={candidate} language={language} dirty={dirty || conversationDirty} statusLabels={statusLabels} badgeStyle={badgeStyle} />
+          {!embedded && <ApplicantApplications candidate={candidate} language={language} dirty={dirty || conversationDirty || workDirty} statusLabels={statusLabels} badgeStyle={badgeStyle} />}
           <div className="application-detail">
           <nav className="application-tabs" aria-label={language === "pl" ? "Szczegóły aplikacji" : "Application details"}>
             {([
@@ -238,9 +255,11 @@ export default function CandidateProfile() {
               ["documents", language === "pl" ? "CV i dokumenty" : "CV & documents"],
               ["notes", language === "pl" ? "Status i notatki" : "Status & notes"],
               ["correspondence", language === "pl" ? "Korespondencja" : "Correspondence"],
+              ["work", language === "pl" ? "Opiekun i zadania" : "Owner & tasks"],
               ["history", language === "pl" ? "Historia" : "History"],
-            ] as const).map(([key, label]) => <button type="button" key={key} aria-pressed={view === key} onClick={() => { if (key !== view && conversationDirty && !window.confirm(language === "pl" ? "Opuścić rozmowę bez zapisania zmian?" : "Leave the conversation without saving changes?")) return; setView(key); }}>{label}</button>)}
+            ] as const).map(([key, label]) => <button type="button" key={key} aria-pressed={view === key} onClick={() => { if (key !== view && (conversationDirty || workDirty) && !window.confirm(language === "pl" ? "Opuścić widok bez zapisania zmian?" : "Leave this view without saving changes?")) return; setView(key); }}>{label}</button>)}
           </nav>
+          {view === "work" && (context?.permissions.includes("tasks.view") ? <ApplicationWorkPanel key={candidate.id} candidateId={candidate.id} context={context} language={language} onDirtyChange={setWorkDirty} /> : <p className="empty-state">{language === "pl" ? "Brak dostępu do zadań." : "You cannot view tasks."}</p>)}
           {view === "history" && <ApplicationHistory key={`${candidate.id}-${candidate.updated_at}`} candidateId={candidate.id} language={language} statusLabels={statusLabels} />}
           <div hidden={view !== "overview"}>
           <section className="panel profile-card completeness-panel">
@@ -348,7 +367,7 @@ export default function CandidateProfile() {
           </div>
         </>
       )}
-    </main>
+    </Container>
   );
 }
 

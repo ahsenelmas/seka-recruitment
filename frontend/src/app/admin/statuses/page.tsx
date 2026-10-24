@@ -27,8 +27,8 @@ function StatusEditor({ item, pl, busy, save, move, index, last }: {
   useEffect(() => { setLabelPl(item.label_pl); setLabelEn(item.label_en); setColor(item.color); }, [item.label_pl, item.label_en, item.color]);
   const dirty = labelPl !== item.label_pl || labelEn !== item.label_en || color !== item.color;
   function submit(event: FormEvent) { event.preventDefault(); save(item.code, { label_pl: labelPl.trim(), label_en: labelEn.trim(), color }); }
-  return <li className="panel status-admin-item"><form onSubmit={submit}>
-    <div className="status-admin-heading"><strong>{pl ? item.label_pl : item.label_en}</strong><code>{item.code}</code><span>{item.is_active ? (pl ? "Aktywny" : "Active") : (pl ? "Archiwalny" : "Archived")}</span></div>
+  return <li className="panel status-admin-item"><details><summary className="status-admin-heading"><span className="status-colour-swatch" style={{ backgroundColor: item.color }} /><strong>{pl ? item.label_pl : item.label_en}</strong><code>{item.code}</code><span>{item.is_active ? (pl ? "Aktywny" : "Active") : (pl ? "Archiwalny" : "Archived")}</span></summary><form onSubmit={submit}>
+
     <div className="status-admin-fields">
       <label>Polski<input value={labelPl} onChange={e => setLabelPl(e.target.value)} maxLength={100} required disabled={busy} /></label>
       <label>English<input value={labelEn} onChange={e => setLabelEn(e.target.value)} maxLength={100} required disabled={busy} /></label>
@@ -42,7 +42,7 @@ function StatusEditor({ item, pl, busy, save, move, index, last }: {
     </div>
     {item.code === "new" && <small>{pl ? "Domyślny status nowych aplikacji pozostaje aktywny." : "The default status for new applications stays active."}</small>}
     {dirty && <p className="muted-text">{pl ? "Niezapisane etykiety. Zapisz je przed zmianą kolejności lub archiwizacją." : "Unsaved labels. Save them before reordering or archiving."}</p>}
-  </form></li>;
+  </form></details></li>;
 }
 
 export default function StatusAdministration() {

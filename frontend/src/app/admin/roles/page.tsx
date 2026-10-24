@@ -13,6 +13,8 @@ function RoleForm({ initial, definitions, pl, busy, submit, creating = false }: 
   const [draft, setDraft] = useState(initial);
   function toggle(code: string, checked: boolean) {
     let permissions = checked ? [...draft.permissions, code] : draft.permissions.filter(item => item !== code);
+    if (checked && ["tasks.manage", "tasks.complete", "work.assign"].includes(code)) permissions.push("tasks.view");
+    if (!checked && code === "tasks.view") permissions = permissions.filter(item => !["tasks.manage", "tasks.complete", "work.assign"].includes(item));
     if (checked && code === "correspondence.draft") permissions.push("correspondence.view");
     if (!checked && code === "correspondence.view") permissions = permissions.filter(item => item !== "correspondence.draft");
     if (checked && code === "cv.upload") permissions.push("cv.view");
@@ -61,14 +63,14 @@ export default function RolesPage() {
     <div aria-live="polite">{error && <p className="error" role="alert">{error}</p>}{saved && <p className="success-message">{pl ? "Zapisano rolę. Uprawnienia obowiązują przy kolejnym żądaniu API." : "Role saved. Permissions apply on the next API request."}</p>}</div>
     {!context ? <button type="button" className="secondary-button" onClick={() => setRetry(v => v + 1)}>{pl ? "Załaduj ponownie" : "Reload"}</button> : !context.permissions.includes("roles.manage") ? <p role="alert">{pl ? "Brak prawa zarządzania rolami." : "You cannot manage roles."}</p> : !data ? <p>{pl ? "Ładowanie…" : "Loading…"}</p> : <>
       <p className="correspondence-notice">{pl ? "Role są wybierane w symulacji. Nie są jeszcze przypisane do kont Microsoft. Zakres oddziału wybierasz przy wejściu; przypisania użytkowników i wiele oddziałów pozostają do wdrożenia." : "Roles are selected in simulation and are not linked to Microsoft accounts. A branch is selected on entry; user assignments and multiple-branch access remain to be implemented."}</p>
-      <section className="panel profile-card"><h2>{pl ? "Nowa rola, np. Asystent" : "New role, e.g. Assistant"}</h2><RoleForm key={newVersion} initial={EMPTY} definitions={data.permissions} pl={pl} busy={busy} creating submit={draft => void save(draft, true)} /></section>
-      <div className="status-admin-list">{data.roles.map(role => <section className="panel status-admin-item" key={role.code}>
-        <div className="status-admin-heading"><h2>{pl ? role.label_pl : role.label_en}</h2><code>{role.code}</code><span>{role.is_active ? (pl ? "Aktywna" : "Active") : (pl ? "Archiwalna" : "Archived")}</span></div>
+      <details className="panel profile-card admin-create"><summary>{pl ? "+ Dodaj rolę" : "+ Add role"}</summary><RoleForm key={newVersion} initial={EMPTY} definitions={data.permissions} pl={pl} busy={busy} creating submit={draft => void save(draft, true)} /></details>
+      <div className="status-admin-list">{data.roles.map(role => <details className="panel status-admin-item role-admin-row" key={role.code}>
+        <summary className="status-admin-heading"><h2>{pl ? role.label_pl : role.label_en}</h2><code>{role.code}</code><span>{role.is_active ? (pl ? "Aktywna" : "Active") : (pl ? "Archiwalna" : "Archived")}</span><small>{role.scope === "branch" ? (pl ? "Oddział" : "Branch") : (pl ? "Cała firma" : "Company-wide")}</small></summary>
         {["admin", "system_admin"].includes(role.code) ? <p>{role.code === "admin" ? (pl ? "Chroniona rola: rekrutacja, role i statusy. Bez ustawień technicznych." : "Protected role: recruitment, roles, and statuses. No technical settings.") : (pl ? "Chroniona rola: wyłącznie ustawienia techniczne. Bez danych kandydatów." : "Protected role: technical settings only. No candidate data.")}</p> : <>
           <RoleForm key={`${role.code}-${role.updated_at}-${role.permissions.join(",")}-${role.scope}-${role.is_active}-${role.label_pl}-${role.label_en}`} initial={role} definitions={data.permissions} pl={pl} busy={busy} submit={draft => void save(draft, false)} />
           {!role.is_builtin && <button type="button" className="secondary-button" disabled={busy} onClick={() => void save({ ...role, is_active: !role.is_active }, false)}>{role.is_active ? (pl ? "Archiwizuj rolę" : "Archive role") : (pl ? "Przywróć rolę" : "Restore role")}</button>}
         </>}
-      </section>)}</div>
+      </details>)}</div>
     </>}
   </main>;
 }
