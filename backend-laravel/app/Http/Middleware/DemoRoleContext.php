@@ -15,13 +15,19 @@ class DemoRoleContext
     {
         if ($request->is('api/health') || $request->isMethod('OPTIONS')) return $next($request);
         // Login metadata and role selection must recover from an archived/invalid cookie.
-        $selection = $request->is('api/demo/catalog') || ($request->is('api/demo/context') && $request->isMethod('POST'));
+        $selection = $request->is('api/demo/catalog') || ($request->is('api/demo/context', 'api/demo/employee') && $request->isMethod('POST'));
         if ($selection) {
             $response = $next($request);
             $response->headers->set('Cache-Control', 'private, no-store');
             return $response;
         }
-        $raw = $request->cookie('seka_demo', 'hr_manager:');
+        $employee = null;
+        $employeeId = $request->cookie('seka_demo_employee');
+        if ($employeeId) {
+            $employee = is_string($employeeId) && \Illuminate\Support\Str::isUuid($employeeId) ? \App\Models\DemoEmployee::with('role')->whereKey($employeeId)->where('is_active', true)->where('is_demo', true)->first() : null;
+            if (! $employee || ! $employee->role?->is_active) return response()->json(['message' => 'Select a demonstration account again.'], 400);
+        }
+        $raw = $employee ? $employee->role_code.':'.($employee->role->scope === 'branch' ? ($employee->branch_id ?? '') : '') : $request->cookie('seka_demo', 'hr_manager:');
         $parts = is_string($raw) ? explode(':', $raw, 2) : [];
         $role = count($parts) === 2 ? RecruitmentRole::whereKey($parts[0])->where('is_active', true)->first() : null;
         if (! $role) return response()->json(['message' => 'Wybierz ponownie rolę / Select a role again.'], 400);
@@ -35,6 +41,7 @@ class DemoRoleContext
         } elseif ($branch !== '') {
             return response()->json(['message' => 'Wybierz ponownie rolę / Select a role again.'], 400);
         }
+        $request->attributes->set('seka_demo_employee', $employee);
         $request->attributes->set('seka_demo_role', $role->code);
         $request->attributes->set('seka_demo_branch_id', $branchId);
         $request->attributes->set('seka_demo_scope', $role->scope);
@@ -45,7 +52,10 @@ class DemoRoleContext
         $path = trim($request->path(), '/');
         $permit = $selection || ($path === 'api/demo/context' && $method === 'GET');
         if (! $permit) {
-            if ($path === 'api/inbox' && $method === 'GET') $permit = $allowed('applications.view') && $allowed('correspondence.view');
+            if ($path === 'api/tasks') $permit = $method === 'GET' && $allowed('applications.view') && $allowed('tasks.view');
+            elseif (preg_match('~^api/candidates/[^/]+/work$~', $path)) $permit = $allowed('applications.view') && $allowed('tasks.view') && ($method === 'GET' || ($method === 'PATCH' && $allowed('work.assign')));
+            elseif (preg_match('~^api/candidates/[^/]+/tasks(?:/[^/]+)?$~', $path)) $permit = $allowed('applications.view') && $allowed('tasks.view') && (($method === 'POST' && $allowed('tasks.manage')) || ($method === 'PATCH' && ($allowed('tasks.manage') || $allowed('tasks.complete'))));
+            elseif ($path === 'api/inbox' && $method === 'GET') $permit = $allowed('applications.view') && $allowed('correspondence.view');
             elseif (preg_match('~^api/candidates/[^/]+/messages(?:/[^/]+)?$~', $path)) {
                 $permit = $allowed('applications.view') && $allowed('correspondence.view') && (
                     $method === 'GET' ||

@@ -87,3 +87,10 @@ Route::get('/candidates/{id}/messages', [\App\Http\Controllers\ApplicationMailbo
 Route::post('/candidates/{id}/messages', [\App\Http\Controllers\ApplicationMailboxController::class, 'createDraft'])->whereUuid('id');
 Route::post('/candidates/{id}/messages/sample-incoming', [\App\Http\Controllers\ApplicationMailboxController::class, 'sampleIncoming'])->whereUuid('id');
 Route::patch('/candidates/{id}/messages/{messageId}', [\App\Http\Controllers\ApplicationMailboxController::class, 'updateDraft'])->whereUuid('id')->whereUuid('messageId');
+
+Route::post('/demo/employee', [\App\Http\Controllers\DemoContextController::class, 'employee']);
+Route::get('/tasks', [\App\Http\Controllers\ApplicationWorkController::class, 'index']);
+Route::get('/candidates/{id}/work', [\App\Http\Controllers\ApplicationWorkController::class, 'show'])->whereUuid('id');
+Route::patch('/candidates/{id}/work', [\App\Http\Controllers\ApplicationWorkController::class, 'owner'])->whereUuid('id');
+Route::post('/candidates/{id}/tasks', [\App\Http\Controllers\ApplicationWorkController::class, 'store'])->whereUuid('id');
+Route::patch('/candidates/{id}/tasks/{taskId}', [\App\Http\Controllers\ApplicationWorkController::class, 'update'])->whereUuid('id')->whereUuid('taskId');
