@@ -8,9 +8,8 @@ type Page = { data: Event[]; current_page: number; last_page: number };
 const TITLES: Record<string, [string, string]> = { application_created: ["Otrzymano aplikację", "Application created"], application_updated: ["Zaktualizowano aplikację", "Application updated"], cv_uploaded: ["Dodano dokument CV", "CV uploaded"] };
 const FIELDS: Record<string, [string, string]> = { status: ["Status", "Status"], branch_id: ["Identyfikator oddziału", "Branch ID"], position: ["Stanowisko", "Position"], hr_notes: ["Zmieniono notatki HR", "HR notes changed"], filename: ["Plik", "File"] };
 const ROLES: Record<string, [string,string]> = { admin: ["Administrator", "Administrator"], hr_manager: ["HR", "HR manager"], branch_manager: ["Kierownik oddziału", "Branch manager"], system: ["System", "System"] };
-const STATUSES: Record<string, [string,string]> = { new: ["Nowa", "New"], review: ["W analizie", "Under review"], interview: ["Rozmowa", "Interview"], hired: ["Zatrudniony", "Hired"], rejected: ["Odrzucony", "Rejected"] };
 
-export default function ApplicationHistory({ candidateId, language }: { candidateId: string; language: "pl" | "en" }) {
+export default function ApplicationHistory({ candidateId, language, statusLabels }: { candidateId: string; language: "pl" | "en"; statusLabels: Record<string, string> }) {
   const pl = language === "pl", lang = pl ? 0 : 1;
   const [page, setPage] = useState(1), [retry, setRetry] = useState(0);
   const [data, setData] = useState<Page | null>(null), [error, setError] = useState(false);
@@ -23,7 +22,7 @@ export default function ApplicationHistory({ candidateId, language }: { candidat
   }, [candidateId, page, retry]);
   function value(field: string, input: unknown): string {
     if (input === null || input === "") return pl ? "Nie podano" : "Not provided";
-    return field === "status" && typeof input === "string" ? STATUSES[input]?.[lang] ?? input : String(input);
+    return field === "status" && typeof input === "string" ? statusLabels[input] ?? input : String(input);
   }
   return <section className="panel profile-card"><h2>{pl ? "Historia aplikacji" : "Application history"}</h2>
     <p className="muted-text">{pl ? "Historia obejmuje zdarzenia od włączenia rejestrowania. Wcześniejsze zmiany nie zostały odtworzone." : "History covers events recorded since tracking was enabled. Earlier changes have not been reconstructed."}</p>

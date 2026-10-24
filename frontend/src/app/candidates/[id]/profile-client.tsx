@@ -1,4 +1,5 @@
 "use client";
+import { useStatuses } from "@/lib/useStatuses";
 import ApplicationHistory from "@/components/ApplicationHistory";
 import ApplicantApplications from "@/components/ApplicantApplications";
 import WorkspaceNavigation from "@/components/WorkspaceNavigation";
@@ -14,9 +15,9 @@ import {
   API_URL,
   apiGet,
   Candidate,
+  DemoContext,
   Branch,
   CandidateStatus,
-  STATUS_LABELS,
 } from "@/lib/api";
 
 
@@ -76,13 +77,7 @@ const TEXT = {
   },
 };
 
-const EN_STATUSES: Record<CandidateStatus, string> = {
-  new: "New application",
-  review: "Under review",
-  interview: "Interview",
-  hired: "Hired",
-  rejected: "Rejected",
-};
+
 
 const EN_POSITIONS: Record<string, string> = {
   "Specjalista ds. BHP": "Occupational health and safety specialist",
@@ -92,7 +87,9 @@ const EN_POSITIONS: Record<string, string> = {
 
 export default function CandidateProfile() {
   const { id } = useParams<{ id: string }>();
-  const [canEdit, setCanEdit] = useState(false);
+  const [permissions, setPermissions] = useState<string[]>([]);
+  const allowed = (permission: string) => permissions.includes(permission);
+  const canEdit = ["applications.edit_status", "applications.edit_notes", "applications.edit_position", "applications.assign_branch"].some(permission => permissions.includes(permission));
   const [language, changeLanguage] = useLanguage();
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [status, setStatus] = useState<CandidateStatus>("new");
@@ -107,9 +104,9 @@ export default function CandidateProfile() {
   const [retry, setRetry] = useState(0);
   const [view, setView] = useState<"overview" | "documents" | "correspondence" | "notes" | "history">("overview");
 
-  const onDemoContext = useCallback((context: { role: string }) => setCanEdit(context.role !== "branch_manager"), []);
+  const onDemoContext = useCallback((context: DemoContext) => setPermissions(context.permissions), []);
   const t = TEXT[language];
-  const statusLabels = language === "pl" ? STATUS_LABELS : EN_STATUSES;
+  const { statuses, labels: statusLabels, badgeStyle, error: statusesError } = useStatuses(language, retry);
   const dirty = candidate !== null &&
     (status !== candidate.status || notes !== candidate.hr_notes ||
       branchId !== String(candidate.branch?.id ?? "") || position !== (candidate.position ?? ""));
@@ -163,6 +160,12 @@ export default function CandidateProfile() {
     event.preventDefault();
     if (!candidate || saving || !canEdit) return;
 
+    const payload: Record<string, unknown> = {};
+    if (allowed("applications.edit_status") && status !== candidate.status) payload.status = status;
+    if (allowed("applications.edit_notes") && notes !== candidate.hr_notes) payload.hr_notes = notes;
+    if (allowed("applications.assign_branch") && branchId !== String(candidate.branch?.id ?? "")) payload.branch_id = branchId ? Number(branchId) : null;
+    if (allowed("applications.edit_position") && position !== (candidate.position ?? "")) payload.position = position.trim() || null;
+    if (!Object.keys(payload).length) return;
     setSaving(true);
     setMessage(null);
 
@@ -171,7 +174,7 @@ export default function CandidateProfile() {
         credentials: "include",
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status, hr_notes: notes, branch_id: branchId ? Number(branchId) : null, position: position.trim() || null }),
+        body: JSON.stringify(payload),
       });
       if (!response.ok) throw new Error("Save failed");
 
@@ -193,7 +196,7 @@ export default function CandidateProfile() {
     <main className="workspace dashboard-workspace">
       <WorkspaceNavigation language={language} changeLanguage={changeLanguage} canEdit={canEdit} section="profile" />
       <DemoRoleSelector language={language} onContext={onDemoContext} />
-      {!canEdit && <p className="demo-notice">{language === "pl" ? "Widok tylko do odczytu. Dodawanie i edycja aplikacji są dostępne dla HR i administratora." : "Read-only view. Intake and editing are available to HR and administrators."}</p>}
+      {!canEdit && <p className="demo-notice">{language === "pl" ? "Brak uprawnień do edycji pól tej aplikacji." : "You do not have permission to edit this application’s fields."}</p>}
 
       <a href="/" className="back-link">{t.back}</a>
 
@@ -218,13 +221,14 @@ export default function CandidateProfile() {
                 {" · "}{candidate.branch?.city ?? t.missing}
               </p>
             </div>
-            <span className={`status-badge status-${candidate.status}`}>
-              {statusLabels[candidate.status]}
+            <span className={`status-badge status-${candidate.status}`} style={badgeStyle(candidate.status)}>
+              {statusLabels[candidate.status] ?? candidate.status}
             </span>
           </section>
 
+          {statusesError && <p className="error" role="alert">{language === "pl" ? "Nie udało się pobrać statusów. Odśwież stronę." : "Could not load statuses. Refresh the page."}</p>}
           <div className="application-workspace">
-          <ApplicantApplications candidate={candidate} language={language} dirty={dirty} />
+          <ApplicantApplications candidate={candidate} language={language} dirty={dirty} statusLabels={statusLabels} badgeStyle={badgeStyle} />
           <div className="application-detail">
           <nav className="application-tabs" aria-label={language === "pl" ? "Szczegóły aplikacji" : "Application details"}>
             {([
@@ -235,7 +239,7 @@ export default function CandidateProfile() {
               ["history", language === "pl" ? "Historia" : "History"],
             ] as const).map(([key, label]) => <button type="button" key={key} aria-pressed={view === key} onClick={() => setView(key)}>{label}</button>)}
           </nav>
-          {view === "history" && <ApplicationHistory key={`${candidate.id}-${candidate.updated_at}`} candidateId={candidate.id} language={language} />}
+          {view === "history" && <ApplicationHistory key={`${candidate.id}-${candidate.updated_at}`} candidateId={candidate.id} language={language} statusLabels={statusLabels} />}
           <div hidden={view !== "overview"}>
           <section className="panel profile-card completeness-panel">
             <h2>{language === "pl" ? "Kompletność aplikacji" : "Application completeness"}</h2>
@@ -288,9 +292,9 @@ export default function CandidateProfile() {
               </div>
               <div hidden={view !== "documents"}>
               <h2>{t.cv}</h2>
-              <CandidateCV
+              {allowed("cv.view") ? <CandidateCV
                 key={candidate.id}
-                readOnly={!canEdit}
+                readOnly={!allowed("cv.upload")}
                 candidateId={candidate.id}
                 filename={candidate.cv_original_filename}
                 language={language}
@@ -304,7 +308,7 @@ export default function CandidateProfile() {
                     follow_up_email: updated.follow_up_email,
                   } : current);
                 }}
-              />
+              /> : <p>{language === "pl" ? "Twoja rola nie ma dostępu do CV." : "Your role cannot access CVs."}</p>}
               </div>
             </section>
 
@@ -312,24 +316,24 @@ export default function CandidateProfile() {
               <h2>{t.process}</h2>
               <form className="profile-form" onSubmit={saveChanges}>
                 <label>{t.city}
-                  <select value={branchId} disabled={saving || !canEdit} onChange={e => { setBranchId(e.target.value); setMessage(null); }}>
+                  <select value={branchId} disabled={saving || !allowed("applications.assign_branch")} onChange={e => { setBranchId(e.target.value); setMessage(null); }}>
                     <option value="">{t.missing}</option>
                     {branches.map(branch => <option key={branch.id} value={branch.id}>{branch.city}</option>)}
                   </select>
                 </label>
                 <label>{t.position}
-                  <input value={position} maxLength={150} disabled={saving || !canEdit}
+                  <input value={position} maxLength={150} disabled={saving || !allowed("applications.edit_position")}
                     onChange={e => { setPosition(e.target.value); setMessage(null); }} />
                 </label>
                 <label>
                   {t.status}
-                  <select value={status} disabled={saving || !canEdit}
+                  <select value={status} disabled={saving || !allowed("applications.edit_status")}
                     onChange={(event) => {
                       setStatus(event.target.value as CandidateStatus);
                       setMessage(null);
                     }}>
-                    {Object.entries(statusLabels).map(([value, label]) => (
-                      <option key={value} value={value}>{label}</option>
+                    {statuses.filter(item => item.is_active || item.code === candidate.status).map(item => (
+                      <option key={item.code} value={item.code}>{statusLabels[item.code]}{!item.is_active ? (language === "pl" ? " (archiwalny)" : " (archived)") : ""}</option>
                     ))}
                   </select>
                 </label>
@@ -337,7 +341,7 @@ export default function CandidateProfile() {
                 <label>
                   {t.notes}
                   <textarea value={notes} maxLength={10000}
-                    placeholder={t.placeholder} disabled={saving || !canEdit}
+                    placeholder={t.placeholder} disabled={saving || !allowed("applications.edit_notes")}
                     onChange={(event) => {
                       setNotes(event.target.value);
                       setMessage(null);
@@ -351,7 +355,7 @@ export default function CandidateProfile() {
                 </div>
 
                 <button type="submit" className="primary-button"
-                  disabled={saving || !dirty || !canEdit}>
+                  disabled={saving || !dirty || !canEdit || statusesError || statuses.length === 0}>
                   {saving ? t.saving : t.save}
                 </button>
               </form>

@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiGet, Candidate, STATUS_LABELS } from "@/lib/api";
+import { apiGet, Candidate } from "@/lib/api";
 
 type Profile = { id: string; applications: Candidate[]; visible_application_count: number };
-const EN = { new: "New", review: "Under review", interview: "Interview", hired: "Hired", rejected: "Rejected" };
 
-export default function ApplicantApplications({ candidate, language, dirty }: {
-  candidate: Candidate; language: "pl" | "en"; dirty: boolean;
+export default function ApplicantApplications({ candidate, language, dirty, statusLabels, badgeStyle }: {
+  candidate: Candidate; language: "pl" | "en"; dirty: boolean; statusLabels: Record<string, string>; badgeStyle: (code: string) => React.CSSProperties;
 }) {
   const pl = language === "pl";
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -35,7 +34,7 @@ export default function ApplicantApplications({ candidate, language, dirty }: {
       <ul className="application-list">{profile.applications.map(app => <li key={app.id}>
         <a className={`application-item ${app.id === candidate.id ? "is-current" : ""}`} href={`/candidates/${app.id}`} aria-current={app.id === candidate.id ? "page" : undefined}
           onClick={event => { if (app.id === candidate.id) { event.preventDefault(); return; } if (dirty && !window.confirm(pl ? "Opuścić stronę bez zapisywania zmian?" : "Leave without saving changes?")) event.preventDefault(); }}>
-          <span className={`status-badge status-${app.status}`}>{(pl ? STATUS_LABELS : EN)[app.status]}</span>
+          <span className={`status-badge status-${app.status}`} style={badgeStyle(app.status)}>{statusLabels[app.status] ?? app.status}</span>
           <strong>{app.position || (pl ? "Stanowisko do ustalenia" : "Position to clarify")}</strong>
           <span>{app.branch?.city || (pl ? "Oddział do przypisania" : "Branch unassigned")}</span>
           <small>{new Date(app.created_at).toLocaleDateString(pl ? "pl-PL" : "en-GB")}{app.id === candidate.id ? (pl ? " · Bieżąca" : " · Current") : ""}</small>

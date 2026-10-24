@@ -1,4 +1,5 @@
 "use client";
+import { useStatuses } from "@/lib/useStatuses";
 import WorkspaceNavigation from "@/components/WorkspaceNavigation";
 import { useLanguage } from "@/lib/useLanguage";
 
@@ -11,7 +12,7 @@ import {
   CandidatePage,
   CandidateStatus,
   Dashboard,
-  STATUS_LABELS,
+  DemoContext,
 } from "@/lib/api";
 
 
@@ -93,13 +94,7 @@ const TEXT = {
   },
 };
 
-const EN_STATUSES: Record<CandidateStatus, string> = {
-  new: "New application",
-  review: "Under review",
-  interview: "Interview",
-  hired: "Hired",
-  rejected: "Rejected",
-};
+
 
 const EN_POSITIONS: Record<string, string> = {
   "Specjalista ds. BHP": "Occupational health and safety specialist",
@@ -111,7 +106,7 @@ const PAGE_SIZE = 20;
 
 export default function Home() {
   const [canEdit, setCanEdit] = useState(false);
-  const onDemoContext = useCallback((context: { role: string }) => setCanEdit(context.role !== "branch_manager"), []);
+  const onDemoContext = useCallback((context: DemoContext) => setCanEdit(context.permissions.includes("intake.create")), []);
   const [language, changeLanguage] = useLanguage();
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -128,7 +123,7 @@ export default function Home() {
   const [overviewError, setOverviewError] = useState(false);
 
   const t = TEXT[language];
-  const statusLabels = language === "pl" ? STATUS_LABELS : EN_STATUSES;
+  const { statuses, labels: statusLabels, badgeStyle, error: statusesError } = useStatuses(language, refresh);
 
   function positionLabel(value: string | null) {
     if (!value) return language === "pl" ? "Brak stanowiska" : "Missing position";
@@ -203,12 +198,8 @@ export default function Home() {
   }
 
   const cards = [
-    { label: t.total, value: dashboard?.total },
-    { label: t.new, value: dashboard?.by_status.new },
-    { label: t.review, value: dashboard?.by_status.review },
-    { label: t.interview, value: dashboard?.by_status.interview },
-    { label: t.hired, value: dashboard?.by_status.hired },
-    { label: t.rejected, value: dashboard?.by_status.rejected },
+    { code: "", label: t.total, value: dashboard?.total },
+    ...statuses.map(item => ({ code: item.code, label: statusLabels[item.code], value: dashboard?.by_status[item.code] ?? 0 })),
   ];
 
   return (
@@ -234,18 +225,19 @@ export default function Home() {
           {language === "pl" ? "+ Dodaj aplikację e-mail" : "+ Add email application"}
         </a>
       </div>}
+      {statusesError && <p className="error" role="alert">{language === "pl" ? "Nie udało się pobrać statusów. Odśwież dane." : "Could not load statuses. Refresh the data."}</p>}
       {overviewError && <p className="error" role="alert">{t.error}</p>}
 
       <section className="stats-grid" aria-label={language === "pl" ? "Statystyki rekrutacji" : "Recruitment statistics"}>
         {cards.map((card, index) => (
-          <button className="stat-card stat-filter" key={card.label}
-            aria-pressed={status === ["", "new", "review", "interview", "hired", "rejected"][index]}
+          <button className="stat-card stat-filter" key={card.code}
+            aria-pressed={status === card.code}
             onClick={() => {
-              setStatus(["", "new", "review", "interview", "hired", "rejected"][index]);
+              setStatus(card.code);
               setOffset(0);
               document.getElementById("candidate-list")?.scrollIntoView();
             }}>
-            <div className="stat-topline"><p>{card.label}</p><span aria-hidden="true">{["◎", "＋", "≡", "◷", "✓", "−"][index]}</span></div>
+            <div className="stat-topline"><p>{card.label}</p><span aria-hidden="true">{index === 0 ? "◎" : "●"}</span></div>
             <strong>{card.value ?? "—"}</strong>
           </button>
         ))}
@@ -253,8 +245,8 @@ export default function Home() {
 
       {dashboard && <section className="pipeline-panel" aria-label={language === "pl" ? "Struktura aplikacji" : "Application distribution"}>
         <div className="pipeline-title"><strong>{language === "pl" ? "Struktura aplikacji" : "Application distribution"}</strong><span>{language === "pl" ? "Aktualny stan rekrutacji" : "Current recruitment snapshot"}</span></div>
-        <div className="pipeline-track">{(["new", "review", "interview", "hired", "rejected"] as CandidateStatus[]).map(key => dashboard.by_status[key] > 0 && <div key={key} className={`pipeline-segment pipeline-${key}`} style={{flex: dashboard.by_status[key]}} title={`${statusLabels[key]}: ${dashboard.by_status[key]}`} />)}</div>
-        <div className="pipeline-legend">{(["new", "review", "interview", "hired", "rejected"] as CandidateStatus[]).map(key => <span key={key}><i className={`pipeline-${key}`} />{statusLabels[key]} <strong>{dashboard.by_status[key]}</strong></span>)}</div>
+        <div className="pipeline-track">{statuses.map(item => item.code).map(key => dashboard.by_status[key] > 0 && <div key={key} className={`pipeline-segment pipeline-${key}`} style={{flex: dashboard.by_status[key], backgroundColor: statuses.find(item => item.code === key)?.color}} title={`${statusLabels[key]}: ${dashboard.by_status[key]}`} />)}</div>
+        <div className="pipeline-legend">{statuses.map(item => item.code).map(key => <span key={key}><i style={{backgroundColor: statuses.find(item => item.code === key)?.color}} />{statusLabels[key]} <strong>{dashboard.by_status[key]}</strong></span>)}</div>
       </section>}
       {dashboard && (
         <section className="branch-summary" aria-label={t.city}>
@@ -367,8 +359,8 @@ export default function Home() {
                       <td>{positionLabel(candidate.position)}<ApplicationCompleteness candidate={candidate} language={language} /></td>
                       <td>{candidate.branch?.city ?? (language === "pl" ? "Brak miasta" : "Missing city")}</td>
                       <td>
-                        <span className={`status-badge status-${candidate.status}`}>
-                          {statusLabels[candidate.status]}
+                        <span className={`status-badge status-${candidate.status}`} style={badgeStyle(candidate.status)}>
+                          {statusLabels[candidate.status] ?? candidate.status}
                         </span>
                       </td>
                       <td>

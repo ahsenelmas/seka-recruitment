@@ -5,7 +5,7 @@ import { useLanguage } from "@/lib/useLanguage";
 import DemoRoleSelector from "@/components/DemoRoleSelector";
 import ApplicationCompleteness from "@/components/ApplicationCompleteness";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { API_URL, apiGet, Branch, Candidate } from "@/lib/api";
+import { API_URL, apiGet, Branch, Candidate, DemoContext } from "@/lib/api";
 
 
 
@@ -82,7 +82,7 @@ export default function IntakePage() {
   const [created, setCreated] = useState<Candidate | null>(null);
   const [retry, setRetry] = useState(0);
   const submitting = useRef(false);
-  const onDemoContext = useCallback((context: { role: string }) => setCanEdit(context.role !== "branch_manager"), []);
+  const onDemoContext = useCallback((context: DemoContext) => setCanEdit(context.permissions.includes("intake.create")), []);
   const t = TEXT[language];
 
 
@@ -167,7 +167,7 @@ export default function IntakePage() {
     <main className="workspace dashboard-workspace">
       <WorkspaceNavigation language={language} changeLanguage={changeLanguage} canEdit={canEdit} section="intake" />
       <DemoRoleSelector language={language} onContext={onDemoContext} />
-      {!canEdit && <p className="demo-notice">{language === "pl" ? "Widok tylko do odczytu. Dodawanie i edycja aplikacji są dostępne dla HR i administratora." : "Read-only view. Intake and editing are available to HR and administrators."}</p>}
+      {!canEdit && <p className="demo-notice">{language === "pl" ? "Twoja rola nie ma prawa przyjmowania aplikacji." : "Your role does not have permission to create intake."}</p>}
 
       <a href="/" className="back-link">{t.back}</a>
       <section className="page-heading"><h1>{t.title}</h1></section>

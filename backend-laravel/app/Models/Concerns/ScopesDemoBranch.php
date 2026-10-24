@@ -9,7 +9,7 @@ trait ScopesDemoBranch
     protected static function bootScopesDemoBranch(): void
     {
         static::addGlobalScope('seka_demo_branch', function (Builder $builder) {
-            if (request()->attributes->get('seka_demo_role') !== 'branch_manager') {
+            if (request()->attributes->get('seka_demo_scope') !== 'branch') {
                 return;
             }
 

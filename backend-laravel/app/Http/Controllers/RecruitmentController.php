@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Branch;
 use App\Models\Candidate;
+use App\Models\RecruitmentStatus;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -24,14 +27,8 @@ class RecruitmentController extends Controller
             'city' => ['nullable', 'string', 'max:100'],
             'position' => ['nullable', 'string', 'max:150'],
             'status' => [
-                'nullable',
-                Rule::in([
-                    'new',
-                    'review',
-                    'interview',
-                    'hired',
-                    'rejected',
-                ]),
+                'nullable', 'string', 'max:50',
+                Rule::exists('recruitment_statuses', 'code'),
             ],
             'limit' => ['sometimes', 'integer', 'min:1', 'max:100'],
             'offset' => ['sometimes', 'integer', 'min:0'],
@@ -117,13 +114,7 @@ class RecruitmentController extends Controller
 
     public function dashboard(): JsonResponse
     {
-        $statuses = array_fill_keys([
-            'new',
-            'review',
-            'interview',
-            'hired',
-            'rejected',
-        ], 0);
+        $statuses = RecruitmentStatus::pluck('code')->mapWithKeys(fn ($code) => [$code => 0])->all();
 
         $counts = Candidate::query()
             ->selectRaw('status, COUNT(*) AS total')
@@ -163,14 +154,8 @@ class RecruitmentController extends Controller
     $validated = $request->validate([
         'status' => [
             'sometimes',
-            'required',
-            Rule::in([
-                'new',
-                'review',
-                'interview',
-                'hired',
-                'rejected',
-            ]),
+            'required', 'string', 'max:50',
+            Rule::exists('recruitment_statuses', 'code'),
         ],
         'hr_notes' => [
             'sometimes',
@@ -195,8 +180,18 @@ class RecruitmentController extends Controller
     if (array_key_exists('hr_notes', $validated)) {
     $validated['hr_notes'] = $validated['hr_notes'] ?? '';
 }
-    $candidate->fill($validated);
-    $candidate->save();
+    $candidate = DB::transaction(function () use ($id, $validated) {
+        $candidate = Candidate::whereKey($id)->lockForUpdate()->firstOrFail();
+        if (isset($validated['status'])) {
+            $target = RecruitmentStatus::whereKey($validated['status'])->lockForUpdate()->firstOrFail();
+            if (! $target->is_active && $candidate->status !== $target->code) {
+                throw ValidationException::withMessages(['status' => 'This status is archived.']);
+            }
+        }
+        $candidate->fill($validated);
+        $candidate->save();
+        return $candidate;
+    });
 
     return response()->json(
         $candidate->fresh('branch')

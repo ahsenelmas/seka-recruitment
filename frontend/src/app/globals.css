@@ -1149,3 +1149,20 @@ th { font-size: 10px; letter-spacing: .5px; }td { padding-top: 22px; padding-bot
 .history-list > li { border-left:3px solid #5379c6; padding:4px 0 20px 20px; margin:0 0 18px; overflow-wrap:anywhere; }
 .history-list ul { padding-left:20px; line-height:1.8; }
 .history-pagination { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+
+.status-admin-list { list-style:none; margin:24px 0; padding:0; display:grid; gap:18px; }
+.status-admin-item { padding:24px; }
+.status-admin-heading,.status-admin-actions { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-bottom:16px; }
+.status-admin-heading code { color:#64748b; font-size:.85rem; }
+.status-admin-fields { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; margin:16px 0; }
+.status-admin-fields label { display:flex; flex-direction:column; gap:8px; font-weight:600; }
+.status-admin-fields input { width:100%; box-sizing:border-box; padding:10px; border:1px solid #cbd5e1; border-radius:8px; background:white; color:#172e48; font:inherit; }
+.status-admin-fields input[type=color] { height:44px; padding:4px; }
+.status-admin-actions button { min-height:40px; }
+
+.role-fieldset { border:0; padding:0; margin:0; min-width:0; }
+.role-permission-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin:20px 0; }
+.role-permission-grid label,.role-clear { display:flex !important; flex-direction:row !important; align-items:center; gap:10px; font-weight:500 !important; }
+.role-permission-grid input,.role-clear input { width:18px !important; height:18px; flex-shrink:0; }
+.role-fieldset select { padding:10px; border:1px solid #cbd5e1; border-radius:8px; font:inherit; background:white; color:#172e48; }
+.role-fieldset .primary-button { margin-bottom:16px; }
