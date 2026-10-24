@@ -61,3 +61,7 @@ Route::post('/intake/sample-email', [
 \Illuminate\Support\Facades\Route::get('/demo/context', [\App\Http\Controllers\DemoContextController::class, 'show']);
 \Illuminate\Support\Facades\Route::post('/demo/context', [\App\Http\Controllers\DemoContextController::class, 'store']);
 \Illuminate\Support\Facades\Route::get('/demo/admin-overview', [\App\Http\Controllers\DemoContextController::class, 'adminOverview']);
+
+Route::get('/applicants/{id}', [
+    \App\Http\Controllers\ApplicantController::class, 'show',
+])->whereUuid('id');
