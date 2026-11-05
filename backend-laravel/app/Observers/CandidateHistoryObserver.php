@@ -4,13 +4,15 @@ namespace App\Observers;
 
 use App\Models\ApplicationEvent;
 use App\Models\Candidate;
+use App\Support\ApplicationMailbox;
+use App\Support\ApplicationWork;
 
 class CandidateHistoryObserver
 {
     public function created(Candidate $candidate): void
     {
         $this->record($candidate, 'application_created', []);
-        \App\Support\ApplicationMailbox::captureOriginal($candidate);
+        ApplicationMailbox::captureOriginal($candidate);
         if ($candidate->cv_storage_key) {
             $this->record($candidate, 'cv_uploaded', ['filename' => $candidate->cv_original_filename]);
         }
@@ -28,11 +30,13 @@ class CandidateHistoryObserver
         if ($candidate->wasChanged('hr_notes')) {
             $changes['hr_notes'] = ['changed' => true];
         }
-        if ($changes !== []) $this->record($candidate, 'application_updated', $changes);
+        if ($changes !== []) {
+            $this->record($candidate, 'application_updated', $changes);
+        }
         if ($candidate->wasChanged('cv_storage_key') && $candidate->cv_storage_key) {
             $this->record($candidate, 'cv_uploaded', ['filename' => $candidate->cv_original_filename]);
         }
-        \App\Support\ApplicationWork::reconcileBranch($candidate);
+        ApplicationWork::reconcileBranch($candidate);
     }
 
     private function record(Candidate $candidate, string $type, array $changes): void
@@ -42,7 +46,7 @@ class CandidateHistoryObserver
             'candidate_id' => $candidate->id,
             'type' => $type,
             'actor_role' => is_string($role) ? $role : 'system',
-            'simulated' => is_string($role),
+            'simulated' => request()->attributes->get('seka_auth_simulated', true),
             'changes' => $changes,
             'created_at' => now(),
         ]);

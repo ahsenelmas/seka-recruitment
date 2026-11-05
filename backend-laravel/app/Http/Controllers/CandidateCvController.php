@@ -3,13 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Candidate;
+use App\Support\PdfInspector;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Smalot\PdfParser\Parser;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Throwable;
 
@@ -32,7 +32,7 @@ class CandidateCvController extends Controller
         $file = $request->file('file');
 
         try {
-            $document = (new Parser())->parseFile(
+            $document = PdfInspector::document(
                 $file->getRealPath()
             );
 
@@ -48,7 +48,7 @@ class CandidateCvController extends Controller
         }
 
         $disk = Storage::disk('local');
-        $key = 'cvs/' . Str::uuid() . '.pdf';
+        $key = 'cvs/'.Str::uuid().'.pdf';
 
         $stored = $disk->putFileAs(
             'cvs',

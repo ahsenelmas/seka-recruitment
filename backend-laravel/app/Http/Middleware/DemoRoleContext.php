@@ -2,35 +2,61 @@
 
 namespace App\Http\Middleware;
 
+use App\Http\Controllers\P01Controller;
 use App\Models\Branch;
+use App\Models\DemoEmployee;
 use App\Models\RecruitmentRole;
+use App\Support\EntraIdentity;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
-/** Demonstration only: freely selectable roles do not establish identity. */
+/** Resolves local demonstration identity or verified Entra sessions and scopes permissions. */
 class DemoRoleContext
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->is('api/health') || $request->isMethod('OPTIONS')) return $next($request);
+        if ($request->is('api/health', 'api/mailbox/ingest') || $request->isMethod('OPTIONS')) {
+            return $next($request);
+        }
+        if ($request->is('api/auth/config', 'api/auth/entra/start', 'api/auth/entra/callback', 'api/auth/logout')) {
+            return $next($request);
+        }
+        abort_unless(in_array(config('p01.auth_mode'), ['demo', 'entra'], true), 503, 'Unknown authentication mode.');
+        $entra = config('p01.auth_mode') === 'entra';
+        if (! $entra && ! app()->environment(['local', 'testing']) && ! config('p01.allow_demo')) {
+            return response()->json(['message' => 'Demo identity is disabled. Configure Entra authentication.'], 503);
+        }
+        if ($entra && $request->is('api/intake/sample-email', 'api/candidates/*/messages/sample-incoming')) {
+            abort(403, 'Simulation endpoints are disabled with Entra.');
+        }
+        if ($entra && ($request->is('api/demo/catalog') || ($request->is('api/demo/context', 'api/demo/employee', 'api/admin/roles*') && $request->method() !== 'GET'))) {
+            abort(403, 'Role assignment is managed in Azure.');
+        }
         // Login metadata and role selection must recover from an archived/invalid cookie.
         $selection = $request->is('api/demo/catalog') || ($request->is('api/demo/context', 'api/demo/employee') && $request->isMethod('POST'));
-        if ($selection) {
+        if ($selection && ! $entra) {
             $response = $next($request);
             $response->headers->set('Cache-Control', 'private, no-store');
+
             return $response;
         }
-        $employee = null;
+        $employee = $entra ? EntraIdentity::resolve($request) : null;
+        $request->attributes->set('seka_auth_simulated', ! $entra);
         $employeeId = $request->cookie('seka_demo_employee');
-        if ($employeeId) {
-            $employee = is_string($employeeId) && \Illuminate\Support\Str::isUuid($employeeId) ? \App\Models\DemoEmployee::with('role')->whereKey($employeeId)->where('is_active', true)->where('is_demo', true)->first() : null;
-            if (! $employee || ! $employee->role?->is_active) return response()->json(['message' => 'Select a demonstration account again.'], 400);
+        if ($employeeId && ! $entra) {
+            $employee = is_string($employeeId) && Str::isUuid($employeeId) ? DemoEmployee::with('role')->whereKey($employeeId)->where('is_active', true)->where('is_demo', true)->first() : null;
+            if (! $employee || ! $employee->role?->is_active) {
+                return response()->json(['message' => 'Select a demonstration account again.'], 400);
+            }
         }
         $raw = $employee ? $employee->role_code.':'.($employee->role->scope === 'branch' ? ($employee->branch_id ?? '') : '') : $request->cookie('seka_demo', 'hr_manager:');
         $parts = is_string($raw) ? explode(':', $raw, 2) : [];
         $role = count($parts) === 2 ? RecruitmentRole::whereKey($parts[0])->where('is_active', true)->first() : null;
-        if (! $role) return response()->json(['message' => 'Wybierz ponownie rolę / Select a role again.'], 400);
+        if (! $role) {
+            return response()->json(['message' => 'Wybierz ponownie rolę / Select a role again.'], 400);
+        }
         $branch = $parts[1];
         $branchId = null;
         if ($role->scope === 'branch') {
@@ -51,12 +77,19 @@ class DemoRoleContext
         $method = $request->isMethod('HEAD') ? 'GET' : $request->method();
         $path = trim($request->path(), '/');
         $permit = $selection || ($path === 'api/demo/context' && $method === 'GET');
+        if ($request->is('api/p01', 'api/p01/*')) {
+            return app(P01Controller::class)->dispatch($request, $next);
+        }
         if (! $permit) {
-            if ($path === 'api/tasks') $permit = $method === 'GET' && $allowed('applications.view') && $allowed('tasks.view');
-            elseif (preg_match('~^api/candidates/[^/]+/work$~', $path)) $permit = $allowed('applications.view') && $allowed('tasks.view') && ($method === 'GET' || ($method === 'PATCH' && $allowed('work.assign')));
-            elseif (preg_match('~^api/candidates/[^/]+/tasks(?:/[^/]+)?$~', $path)) $permit = $allowed('applications.view') && $allowed('tasks.view') && (($method === 'POST' && $allowed('tasks.manage')) || ($method === 'PATCH' && ($allowed('tasks.manage') || $allowed('tasks.complete'))));
-            elseif ($path === 'api/inbox' && $method === 'GET') $permit = $allowed('applications.view') && $allowed('correspondence.view');
-            elseif (preg_match('~^api/candidates/[^/]+/messages(?:/[^/]+)?$~', $path)) {
+            if ($path === 'api/tasks') {
+                $permit = $method === 'GET' && $allowed('applications.view') && $allowed('tasks.view');
+            } elseif (preg_match('~^api/candidates/[^/]+/work$~', $path)) {
+                $permit = $allowed('applications.view') && $allowed('tasks.view') && ($method === 'GET' || ($method === 'PATCH' && $allowed('work.assign')));
+            } elseif (preg_match('~^api/candidates/[^/]+/tasks(?:/[^/]+)?$~', $path)) {
+                $permit = $allowed('applications.view') && $allowed('tasks.view') && (($method === 'POST' && $allowed('tasks.manage')) || ($method === 'PATCH' && ($allowed('tasks.manage') || $allowed('tasks.complete'))));
+            } elseif ($path === 'api/inbox' && $method === 'GET') {
+                $permit = $allowed('applications.view') && $allowed('correspondence.view');
+            } elseif (preg_match('~^api/candidates/[^/]+/messages(?:/[^/]+)?$~', $path)) {
                 $permit = $allowed('applications.view') && $allowed('correspondence.view') && (
                     $method === 'GET' ||
                     (($method === 'POST' || $method === 'PATCH') && $allowed('correspondence.draft'))
@@ -64,29 +97,40 @@ class DemoRoleContext
                 if (str_ends_with($path, '/messages/sample-incoming')) {
                     $permit = $method === 'POST' && $allowed('applications.view') && $allowed('correspondence.view') && $allowed('intake.create') && $role->scope === 'all';
                 }
-            }
-            elseif ($request->is('api/admin/roles', 'api/admin/roles/*')) $permit = $allowed('roles.manage');
-            elseif ($request->is('api/admin/statuses', 'api/admin/statuses/*')) $permit = $allowed('statuses.manage');
-            elseif ($request->is('api/system/settings', 'api/demo/admin-overview')) $permit = $allowed('system.configure');
-            elseif ($path === 'api/statuses' && $method === 'GET') $permit = $allowed('applications.view') || $allowed('statuses.manage');
-            elseif (in_array($path, ['api/intake/sample-email', 'api/intake/preview'], true) && $method === 'POST') $permit = $allowed('intake.create') && $role->scope === 'all';
-            elseif (preg_match('~^api/candidates/[^/]+/cv$~', $path)) {
+            } elseif ($request->is('api/admin/roles', 'api/admin/roles/*')) {
+                $permit = $allowed('roles.manage');
+            } elseif ($request->is('api/admin/statuses', 'api/admin/statuses/*')) {
+                $permit = $allowed('statuses.manage');
+            } elseif ($request->is('api/system/settings', 'api/demo/admin-overview')) {
+                $permit = $allowed('system.configure');
+            } elseif ($path === 'api/statuses' && $method === 'GET') {
+                $permit = $allowed('applications.view') || $allowed('statuses.manage');
+            } elseif (in_array($path, ['api/intake/sample-email', 'api/intake/preview'], true) && $method === 'POST') {
+                $permit = $allowed('intake.create') && $role->scope === 'all';
+            } elseif (preg_match('~^api/candidates/[^/]+/cv$~', $path)) {
                 $permit = $allowed('applications.view') && (($method === 'GET' && $allowed('cv.view')) || ($method === 'POST' && $allowed('cv.upload')));
             } elseif ($method === 'PATCH' && preg_match('~^api/candidates/[^/]+$~', $path)) {
                 $fields = ['status' => 'applications.edit_status', 'hr_notes' => 'applications.edit_notes', 'branch_id' => 'applications.assign_branch', 'position' => 'applications.edit_position'];
                 $permit = $allowed('applications.view') && count($request->all()) > 0;
                 foreach ($request->all() as $field => $value) {
-                    if (! isset($fields[$field]) || ! $allowed($fields[$field])) $permit = false;
+                    if (! isset($fields[$field]) || ! $allowed($fields[$field])) {
+                        $permit = false;
+                    }
                 }
-                if ($request->exists('branch_id') && $role->scope !== 'all') $permit = false;
+                if ($request->exists('branch_id') && $role->scope !== 'all') {
+                    $permit = false;
+                }
             } elseif ($method === 'GET' && ($request->is('api/dashboard', 'api/branches', 'api/positions', 'api/candidates', 'api/candidates/*', 'api/applicants/*'))) {
                 $permit = $allowed('applications.view');
             }
         }
-        if (! $permit) return response()->json(['message' => 'Brak uprawnień / Permission denied.'], 403);
+        if (! $permit) {
+            return response()->json(['message' => 'Brak uprawnień / Permission denied.'], 403);
+        }
         $response = $next($request);
         $response->headers->set('Cache-Control', 'private, no-store');
         $response->setVary('Cookie', false);
+
         return $response;
     }
 }

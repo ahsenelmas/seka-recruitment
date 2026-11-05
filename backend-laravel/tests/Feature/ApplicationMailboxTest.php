@@ -57,7 +57,8 @@ class ApplicationMailboxTest extends TestCase
         $this->getJson('/api/dashboard')->assertOk()->assertJsonPath('reply_drafts', 1);
         $this->postJson($url, array_merge($data, ['sender' => 'other@example.com']))->assertUnprocessable();
         $this->postJson($url, array_merge($data, ['delivery_status' => 'sent']))->assertUnprocessable();
-        Mail::assertNothingSent(); Mail::assertNothingQueued();
+        Mail::assertNothingSent();
+        Mail::assertNothingQueued();
     }
 
     public function test_optimistic_version_prevents_overwriting_a_newer_draft(): void
@@ -73,7 +74,7 @@ class ApplicationMailboxTest extends TestCase
         $this->patchJson($url.'/'.$incoming->id, ['version' => 1, 'subject' => 'Changed', 'body' => 'Changed'])->assertConflict();
     }
 
-    public function test_branch_reader_cannot_access_other_branch_or_write_drafts(): void
+    public function test_unit_director_can_draft_only_within_their_unit(): void
     {
         $first = Branch::create(['name' => 'First', 'city' => 'Warszawa']);
         $other = Branch::create(['name' => 'Other', 'city' => 'Kraków']);
@@ -82,7 +83,7 @@ class ApplicationMailboxTest extends TestCase
         $this->asRole('branch_manager', $first->id)->getJson('/api/inbox')->assertOk()->assertJsonPath('total', 1);
         $this->getJson('/api/candidates/'.$mine->id.'/messages')->assertOk();
         $this->getJson('/api/candidates/'.$theirs->id.'/messages')->assertNotFound();
-        $this->postJson('/api/candidates/'.$mine->id.'/messages', [])->assertForbidden();
+        $this->postJson('/api/candidates/'.$mine->id.'/messages', ['client_id' => (string) Str::uuid(), 'subject' => 'Reply', 'body' => 'Reviewed'])->assertCreated();
         $this->postJson('/api/candidates/'.$mine->id.'/messages/sample-incoming', [])->assertForbidden();
     }
 
@@ -123,7 +124,8 @@ class ApplicationMailboxTest extends TestCase
         }
         $this->asRole('hr_manager')->getJson('/api/candidates/'.$candidate->id.'/messages?page=2')->assertOk()->assertJsonPath('messages.total', 22)->assertJsonCount(2, 'messages.data');
         DB::beginTransaction();
-        $temporary = $this->candidate(); $id = $temporary->id;
+        $temporary = $this->candidate();
+        $id = $temporary->id;
         DB::rollBack();
         $this->assertDatabaseMissing('application_messages', ['candidate_id' => $id]);
     }

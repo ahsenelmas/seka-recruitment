@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Branch;
+use App\Models\DemoEmployee;
 use App\Models\RecruitmentRole;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,9 +14,9 @@ class DemoContextController extends Controller
     public function catalog(): JsonResponse
     {
         return response()->json([
-            'roles' => RecruitmentRole::where('is_active', true)->orderBy('is_builtin', 'desc')->orderBy('code')->get(),
+            'roles' => RecruitmentRole::whereIn('code', ['system_admin', 'hr_manager', 'branch_manager', 'deputy_director', 'hr_support', 'specialist_director'])->where('is_active', true)->orderBy('is_builtin', 'desc')->orderBy('code')->get(),
             'branches' => Branch::withoutGlobalScopes()->orderBy('city')->get(['id', 'city', 'name']),
-            'employees' => \App\Models\DemoEmployee::where('is_demo', true)->where('is_active', true)->whereHas('role', fn ($q) => $q->where('is_active', true))->orderBy('name')->get(['id', 'name', 'email', 'role_code', 'branch_id']),
+            'employees' => DemoEmployee::whereIn('role_code', ['system_admin', 'hr_manager', 'branch_manager', 'deputy_director', 'hr_support', 'specialist_director'])->where('is_demo', true)->where('is_active', true)->whereHas('role', fn ($q) => $q->where('is_active', true))->orderBy('name')->get(['id', 'name', 'email', 'role_code', 'branch_id']),
             'simulation' => true,
         ]);
     }
@@ -29,7 +30,7 @@ class DemoContextController extends Controller
             'permissions' => $request->attributes->get('seka_demo_permissions', []),
             'scope' => $request->attributes->get('seka_demo_scope'),
             'branch_id' => $request->attributes->get('seka_demo_branch_id'),
-            'simulation' => true,
+            'simulation' => $request->attributes->get('seka_auth_simulated', true),
             'branches' => Branch::withoutGlobalScopes()->orderBy('city')->get(['id', 'city', 'name']),
         ]);
     }
@@ -44,6 +45,7 @@ class DemoContextController extends Controller
         $branch = $role->scope === 'branch' ? ($data['branch_id'] ?? null) : null;
         abort_if($role->scope === 'branch' && $branch === null, 422, 'Select a branch.');
         abort_if($role->scope === 'all' && isset($data['branch_id']), 422, 'This role has company-wide scope.');
+
         return response()->json([
             'role' => $role->code, 'branch_id' => $branch, 'simulation' => true,
         ])->cookie('seka_demo', $role->code.':'.($branch ?? ''), 480, '/api', null, $request->isSecure(), true, false, 'lax')->withoutCookie('seka_demo_employee', '/api');
@@ -52,10 +54,11 @@ class DemoContextController extends Controller
     public function employee(Request $request): JsonResponse
     {
         $data = $request->validate(['employee_id' => ['required', 'uuid']]);
-        $employee = \App\Models\DemoEmployee::with('role')->whereKey($data['employee_id'])->where('is_demo', true)->where('is_active', true)->firstOrFail();
+        $employee = DemoEmployee::with('role')->whereKey($data['employee_id'])->where('is_demo', true)->where('is_active', true)->firstOrFail();
         abort_unless($employee->role?->is_active, 422, 'This role is inactive.');
-        abort_if($employee->role->scope === 'branch' && ! \App\Models\Branch::withoutGlobalScopes()->whereKey($employee->branch_id)->exists(), 422, 'This account needs a valid branch.');
+        abort_if($employee->role->scope === 'branch' && ! Branch::withoutGlobalScopes()->whereKey($employee->branch_id)->exists(), 422, 'This account needs a valid branch.');
         $branch = $employee->role->scope === 'branch' ? $employee->branch_id : null;
+
         return response()->json(['role' => $employee->role_code, 'branch_id' => $branch, 'simulation' => true])->cookie('seka_demo_employee', $employee->id, 480, '/api', null, $request->isSecure(), true, false, 'lax')->cookie('seka_demo', $employee->role_code.':'.($branch ?? ''), 480, '/api', null, $request->isSecure(), true, false, 'lax');
     }
 

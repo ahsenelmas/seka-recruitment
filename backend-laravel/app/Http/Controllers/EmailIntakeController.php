@@ -3,13 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Candidate;
+use App\Support\PdfInspector;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Smalot\PdfParser\Parser;
 use Throwable;
 
 class EmailIntakeController extends Controller
@@ -79,7 +79,7 @@ class EmailIntakeController extends Controller
                     throw new \RuntimeException('Not a PDF.');
                 }
 
-                $document = (new Parser())->parseFile(
+                $document = PdfInspector::document(
                     $file->getRealPath()
                 );
 
@@ -88,7 +88,7 @@ class EmailIntakeController extends Controller
                 }
             } catch (Throwable $error) {
                 $problem = 'Nie można odczytać załącznika. '
-                    . 'Prześlij poprawny dokument CV w formacie PDF bez hasła.';
+                    .'Prześlij poprawny dokument CV w formacie PDF bez hasła.';
             }
         }
 
@@ -96,7 +96,7 @@ class EmailIntakeController extends Controller
 
         try {
             if ($file !== null && $problem === null) {
-                $key = 'cvs/' . Str::uuid() . '.pdf';
+                $key = 'cvs/'.Str::uuid().'.pdf';
 
                 $stored = $disk->putFileAs(
                     'cvs',
@@ -125,7 +125,7 @@ class EmailIntakeController extends Controller
                         (string) ($data['position'] ?? '')
                     ) ?: null,
                     'branch_id' => $data['branch_id'] ?? null,
-                    'status' => 'new',
+                    'status' => ($key && ! $problem && ! empty($data['branch_id']) && ! empty(trim($data['position'] ?? ''))) ? 'new_complete' : 'new_incomplete',
                     'source' => 'sample_email',
                     'email_subject' => $data['email_subject'],
                     'email_body' => $data['email_body'],

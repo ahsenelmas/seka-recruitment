@@ -3,9 +3,9 @@
 return [
     'paths' => ['api/*'],
 
-    'allowed_methods' => ['GET', 'POST', 'PATCH', 'OPTIONS'],
+    'allowed_methods' => ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
 
-    'allowed_origins' => ['http://localhost:3000'],
+    'allowed_origins' => [env('SEKA_FRONTEND_URL', 'http://localhost:3000')],
 
     'allowed_origins_patterns' => [],
 
