@@ -12,39 +12,26 @@ class ApplicantProfilesTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_repeat_submissions_share_identity_without_losing_documents(): void
+    public function test_repeated_submissions_are_independent_and_keep_documents(): void
     {
-        $first = Candidate::create([
-            'first_name' => 'Anna', 'last_name' => 'Test',
-            'email' => 'Anna@example.com', 'cv_storage_key' => 'cvs/first.pdf',
-        ]);
-        $second = Candidate::create([
-            'first_name' => 'Anna', 'last_name' => 'Test',
-            'email' => 'anna@example.com', 'cv_storage_key' => 'cvs/second.pdf',
-        ]);
-        $this->assertSame($first->applicant_id, $second->applicant_id);
-        $this->assertSame(1, Applicant::count());
+        $first = Candidate::create(['first_name' => 'Anna', 'last_name' => 'Test', 'email' => 'Anna@example.com', 'cv_storage_key' => 'cvs/first.pdf']);
+        $second = Candidate::create(['first_name' => 'Anna', 'last_name' => 'Test', 'email' => 'anna@example.com', 'cv_storage_key' => 'cvs/second.pdf']);
+        $this->assertNull($first->applicant_id);
+        $this->assertNull($second->applicant_id);
+        $this->assertSame(0, Applicant::count());
         $this->assertSame(2, Candidate::count());
         $this->assertSame('cvs/first.pdf', $first->fresh()->cv_storage_key);
         $this->assertSame('cvs/second.pdf', $second->fresh()->cv_storage_key);
     }
 
-    public function test_profile_excludes_other_branches_for_branch_manager(): void
+    public function test_independent_records_still_enforce_branch_scope(): void
     {
-        $warsaw = Branch::create(['name' => 'Warsaw', 'city' => 'Warszawa']);
-        $krakow = Branch::create(['name' => 'Krakow', 'city' => 'KrakĂłw']);
-        $first = Candidate::create([
-            'first_name' => 'Anna', 'last_name' => 'Test',
-            'email' => 'anna@example.com', 'branch_id' => $warsaw->id,
-        ]);
-        $other = Candidate::create([
-            'first_name' => 'Anna', 'last_name' => 'Test',
-            'email' => 'anna@example.com', 'branch_id' => $krakow->id,
-        ]);
-        $this->withCredentials()->withUnencryptedCookie('seka_demo', 'branch_manager:'.$warsaw->id)
-            ->getJson('/api/applicants/'.$first->applicant_id)
-            ->assertOk()->assertJsonPath('visible_application_count', 1)
-            ->assertJsonPath('applications.0.id', $first->id)
-            ->assertJsonMissing(['id' => $other->id]);
+        $a = Branch::create(['name' => 'A', 'city' => 'Warszawa']);
+        $b = Branch::create(['name' => 'B', 'city' => 'Kraków']);
+        $mine = Candidate::create(['first_name' => 'Anna', 'last_name' => 'Test', 'email' => 'anna@example.com', 'branch_id' => $a->id]);
+        $other = Candidate::create(['first_name' => 'Anna', 'last_name' => 'Test', 'email' => 'anna@example.com', 'branch_id' => $b->id]);
+        $this->withCredentials()->withUnencryptedCookie('seka_demo', 'branch_manager:'.$a->id)->getJson('/api/candidates')->assertOk()->assertJsonPath('total', 1);
+        $this->getJson('/api/candidates/'.$other->id)->assertNotFound();
+        $this->getJson('/api/applicants/11111111-1111-4111-8111-111111111111')->assertStatus(410);
     }
 }

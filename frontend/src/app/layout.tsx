@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./seka-workspace.css";
+import "./navigation-refresh.css";
 import { Suspense } from "react";
 import DemoAccessBoundary from "@/components/DemoAccessBoundary";
 
@@ -15,8 +17,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pl" translate="no" className="notranslate">
-      <head><meta name="google" content="notranslate" /></head>
-      <body><Suspense fallback={<p className="empty-state">SEKA · Ładowanie / Loading…</p>}><DemoAccessBoundary>{children}</DemoAccessBoundary></Suspense></body>
+      <head>
+        <meta name="google" content="notranslate" />
+      </head>
+      <body>
+        <Suspense
+          fallback={<p className="empty-state">SEKA · Ładowanie / Loading…</p>}
+        >
+          <DemoAccessBoundary>{children}</DemoAccessBoundary>
+        </Suspense>
+      </body>
     </html>
   );
 }

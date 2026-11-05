@@ -30,7 +30,7 @@ class RecruitmentRolesTest extends TestCase
         $this->asRole('system_admin')->getJson('/api/system/settings')->assertOk();
         $this->getJson('/api/candidates')->assertForbidden();
         $this->getJson('/api/admin/roles')->assertForbidden();
-        $this->patchJson('/api/admin/statuses/new', ['label_en' => 'Changed'])->assertForbidden();
+        $this->patchJson('/api/admin/statuses/new', ['label_en' => 'Changed'])->assertOk(); // P01 technical configuration; no candidate access.
         $this->asRole('admin')->getJson('/api/admin/roles')->assertOk();
         $this->getJson('/api/system/settings')->assertForbidden();
         $this->patchJson('/api/admin/roles/system_admin', [])->assertForbidden();
@@ -44,7 +44,8 @@ class RecruitmentRolesTest extends TestCase
             'permissions' => ['applications.view', 'applications.edit_notes'],
         ];
         $this->asRole('admin')->postJson('/api/admin/roles', $data)->assertCreated();
-        $updated = $data; unset($updated['code']);
+        $updated = $data;
+        unset($updated['code']);
         $updated['label_en'] = 'Branch Assistant';
         $this->patchJson('/api/admin/roles/assistant', $updated)->assertOk()->assertJsonPath('label_en', 'Branch Assistant');
         $this->postJson('/api/admin/roles', array_merge($data, ['code' => 'escalation', 'permissions' => ['applications.view', 'system.configure']]))->assertUnprocessable();
@@ -65,7 +66,7 @@ class RecruitmentRolesTest extends TestCase
         $this->getJson('/api/candidates/'.$theirs->id)->assertNotFound();
         $this->patchJson('/api/candidates/'.$theirs->id, ['hr_notes' => 'Forbidden'])->assertNotFound();
         $this->getJson('/api/candidates/'.$theirs->id.'/history')->assertNotFound();
-        $this->getJson('/api/applicants/'.$mine->applicant_id)->assertOk()->assertJsonPath('visible_application_count', 1);
+        $this->getJson('/api/applicants/11111111-1111-4111-8111-111111111111')->assertStatus(410);
         $this->postJson('/api/intake/sample-email', [])->assertForbidden();
     }
 

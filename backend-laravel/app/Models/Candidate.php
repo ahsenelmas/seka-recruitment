@@ -2,16 +2,21 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ScopesDemoBranch;
+use App\Observers\CandidateHistoryObserver;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class Candidate extends Model
 {
-    use \App\Models\Concerns\ScopesDemoBranch;
-
     use HasUuids;
+    use ScopesDemoBranch;
+
+    protected $attributes = ['status' => 'new'];
 
     protected $fillable = [
         'first_name',
@@ -31,34 +36,43 @@ class Candidate extends Model
     ];
 
     protected $hidden = [
-        'cv_storage_key',
+        'cv_storage_key', 'applicant_id',
     ];
 
     protected $appends = [
         'missing_information',
         'is_complete',
-        'follow_up_email',
+        'follow_up_email', 'main_state',
     ];
 
     // Keep the submission write and its history events in the same transaction.
     public function save(array $options = [])
     {
-        return \Illuminate\Support\Facades\DB::transaction(fn () => parent::save($options));
+        return DB::transaction(fn () => parent::save($options));
+    }
+
+    protected function casts(): array
+    {
+        return ['hr_support_required' => 'boolean', 'qualification_required' => 'boolean', 'future_consent' => 'boolean', 'completed_at' => 'datetime', 'interview_at' => 'datetime', 'consent_recorded_at' => 'datetime'];
     }
 
     protected static function booted(): void
     {
-        static::observe(\App\Observers\CandidateHistoryObserver::class);
+        static::saving(function (Candidate $candidate) {
+            if (in_array($candidate->status, ['new_complete', 'new_incomplete'], true)) {
+                $candidate->status = $candidate->is_complete ? 'new_complete' : 'new_incomplete';
+            }if ($candidate->exists && $candidate->isDirty('status') && ! $candidate->isDirty('process_version')) {
+                $candidate->process_version = (int) $candidate->process_version + 1;
+            }
+        });
+        static::observe(CandidateHistoryObserver::class);
         static::creating(function (Candidate $candidate) {
             $email = mb_strtolower(trim($candidate->email));
-            // The unique email index also protects simultaneous submissions.
-            $profile = Applicant::firstOrCreate(['email' => $email]);
-            $candidate->applicant_id = $profile->id;
             $candidate->email = $email;
         });
     }
 
-    public function messages(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function messages(): HasMany
     {
         return $this->hasMany(ApplicationMessage::class);
     }
@@ -70,6 +84,7 @@ class Candidate extends Model
         if (is_array($permissions) && ! in_array('correspondence.view', $permissions, true)) {
             unset($attributes['email_subject'], $attributes['email_body']);
         }
+
         return $attributes;
     }
 
@@ -81,6 +96,11 @@ class Candidate extends Model
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    protected function mainState(): Attribute
+    {
+        return Attribute::make(get: fn () => RecruitmentStatus::find($this->status)?->main_state ?? 'new');
     }
 
     protected function missingInformation(): Attribute
@@ -139,18 +159,18 @@ class Candidate extends Model
                 ];
 
                 $lines = array_map(
-                    fn (string $issue): string => '- ' . $requests[$issue],
+                    fn (string $issue): string => '- '.$requests[$issue],
                     $issues
                 );
 
                 $body = "Dzień dobry,\n\n"
-                    . "dziękujemy za przesłanie aplikacji do SEKA. "
-                    . "Aby kontynuować proces rekrutacji, prosimy "
-                    . "o uzupełnienie następujących informacji lub dokumentów:\n\n"
-                    . implode("\n", $lines)
-                    . "\n\nProsimy o przesłanie brakujących informacji "
-                    . "lub dokumentów w odpowiedzi na tę wiadomość.\n\n"
-                    . "Pozdrawiamy,\nZespół HR SEKA";
+                    .'dziękujemy za przesłanie aplikacji do SEKA. '
+                    .'Aby kontynuować proces rekrutacji, prosimy '
+                    ."o uzupełnienie następujących informacji lub dokumentów:\n\n"
+                    .implode("\n", $lines)
+                    ."\n\nProsimy o przesłanie brakujących informacji "
+                    ."lub dokumentów w odpowiedzi na tę wiadomość.\n\n"
+                    ."Pozdrawiamy,\nZespół HR SEKA";
 
                 return [
                     'status' => 'draft_only',

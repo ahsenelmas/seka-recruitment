@@ -22,3 +22,8 @@ backend/uploads/
 *.log
 .vscode/
 .idea/
+
+# P01 local secrets and backups
+.env.docker
+!.env.docker.example
+backups/

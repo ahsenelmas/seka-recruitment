@@ -15,8 +15,6 @@ import {
   DemoContext,
 } from "@/lib/api";
 
-
-
 const TEXT = {
   pl: {
     recruitment: "Rekrutacja",
@@ -30,7 +28,7 @@ const TEXT = {
     interview: "Rozmowy",
     hired: "Zatrudnieni",
     rejected: "Odrzucone",
-    candidates: "Kandydaci",
+    candidates: "Aplikacje",
     searchHelp: "Wyszukuj według nazwiska, adresu e-mail lub stanowiska.",
     search: "Wyszukaj",
     placeholder: "Imię, nazwisko, e-mail…",
@@ -49,7 +47,8 @@ const TEXT = {
     missing: "Brak",
     empty: "Brak pasujących kandydatów",
     emptyHelp: "Zmień kryteria wyszukiwania lub wyczyść filtry.",
-    error: "Nie udało się pobrać danych. Sprawdź połączenie i spróbuj ponownie.",
+    error:
+      "Nie udało się pobrać danych. Sprawdź połączenie i spróbuj ponownie.",
     previous: "Poprzednia",
     next: "Następna",
     of: "z",
@@ -58,7 +57,8 @@ const TEXT = {
   en: {
     recruitment: "Recruitment",
     title: "Recruitment overview",
-    subtitle: "Manage applications and candidates across branches.",
+    subtitle:
+      "Applications, correspondence and decisions across your organisation.",
     refresh: "Refresh data",
     notice: "Demo data — candidates and branches are fictional examples.",
     total: "All applications",
@@ -67,7 +67,7 @@ const TEXT = {
     interview: "Interviews",
     hired: "Hired",
     rejected: "Rejected",
-    candidates: "Candidates",
+    candidates: "Applications",
     searchHelp: "Search by name, email address, or position.",
     search: "Search",
     placeholder: "Name, surname, email…",
@@ -94,8 +94,6 @@ const TEXT = {
   },
 };
 
-
-
 const EN_POSITIONS: Record<string, string> = {
   "Specjalista ds. BHP": "Occupational health and safety specialist",
   "Koordynator szkoleń": "Training coordinator",
@@ -106,7 +104,11 @@ const PAGE_SIZE = 20;
 
 export default function Home() {
   const [canEdit, setCanEdit] = useState(false);
-  const onDemoContext = useCallback((context: DemoContext) => setCanEdit(context.permissions.includes("intake.create")), []);
+  const onDemoContext = useCallback(
+    (context: DemoContext) =>
+      setCanEdit(context.permissions.includes("intake.create")),
+    [],
+  );
   const [language, changeLanguage] = useLanguage();
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -124,21 +126,26 @@ export default function Home() {
   const [overviewError, setOverviewError] = useState(false);
 
   const t = TEXT[language];
-  const { statuses, labels: statusLabels, badgeStyle, error: statusesError } = useStatuses(language, refresh);
+  const {
+    statuses,
+    labels: statusLabels,
+    badgeStyle,
+    error: statusesError,
+  } = useStatuses(language, refresh);
 
   function positionLabel(value: string | null) {
-    if (!value) return language === "pl" ? "Brak stanowiska" : "Missing position";
-    return language === "en" ? EN_POSITIONS[value] ?? value : value;
+    if (!value)
+      return language === "pl" ? "Brak stanowiska" : "Missing position";
+    return language === "en" ? (EN_POSITIONS[value] ?? value) : value;
   }
-
 
   useEffect(() => {
     document.documentElement.lang = language;
-    document.title = language === "pl"
-      ? "SEKA — Panel rekrutacji"
-      : "SEKA — Recruitment dashboard";
+    document.title =
+      language === "pl"
+        ? "SEKA — Panel rekrutacji"
+        : "SEKA — Recruitment dashboard";
   }, [language]);
-
 
   useEffect(() => {
     const controller = new AbortController();
@@ -202,153 +209,379 @@ export default function Home() {
 
   const cards = [
     { code: "", label: t.total, value: dashboard?.total },
-    ...statuses.map(item => ({ code: item.code, label: statusLabels[item.code], value: dashboard?.by_status[item.code] ?? 0 })),
+    ...statuses
+      .filter((item) => (dashboard?.by_status[item.code] ?? 0) > 0)
+      .slice(0, 5)
+      .map((item) => ({
+        code: item.code,
+        label: statusLabels[item.code],
+        value: dashboard?.by_status[item.code] ?? 0,
+      })),
   ];
 
   return (
     <main className="workspace dashboard-workspace">
-      <WorkspaceNavigation language={language} changeLanguage={changeLanguage} canEdit={canEdit} section="overview" />
+      <WorkspaceNavigation
+        language={language}
+        changeLanguage={changeLanguage}
+        canEdit={canEdit}
+        section="overview"
+      />
       <DemoRoleSelector language={language} onContext={onDemoContext} />
 
       <section className="page-heading overview-hero" id="overview">
         <div>
-          <p className="eyebrow">{language === "pl" ? "PANEL HR" : "HR DASHBOARD"}</p>
+          <p className="eyebrow">
+            {language === "pl" ? "CENTRUM OPERACYJNE" : "OPERATIONS CENTRE"}
+          </p>
           <h1>{t.title}</h1>
           <p>{t.subtitle}</p>
         </div>
-        <button className="secondary-button"
-          onClick={() => setRefresh((value) => value + 1)}>
-          {t.refresh}
-        </button>
+        <div className="overview-actions">
+          <a className="secondary-button" href="/applications">
+            {language === "pl" ? "Otwórz aplikacje" : "Open applications"} ↗
+          </a>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => setRefresh((value) => value + 1)}
+          >
+            {t.refresh}
+          </button>
+          {canEdit && (
+            <a className="primary-button" href="/manual">
+              + {language === "pl" ? "Nowa aplikacja" : "New application"}
+            </a>
+          )}
+        </div>
       </section>
 
+      {statusesError && (
+        <p className="error" role="alert">
+          {language === "pl"
+            ? "Nie udało się pobrać statusów. Odśwież dane."
+            : "Could not load statuses. Refresh the data."}
+        </p>
+      )}
+      {overviewError && (
+        <p className="error" role="alert">
+          {t.error}
+        </p>
+      )}
 
-      {canEdit && <div className="intake-shortcut">
-        <a className="secondary-button" href="/intake">
-          {language === "pl" ? "+ Dodaj aplikację e-mail" : "+ Add email application"}
-        </a>
-      </div>}
-      {statusesError && <p className="error" role="alert">{language === "pl" ? "Nie udało się pobrać statusów. Odśwież dane." : "Could not load statuses. Refresh the data."}</p>}
-      {overviewError && <p className="error" role="alert">{t.error}</p>}
-
-      {dashboard && <section className="attention-grid" aria-label={language === "pl" ? "Wymaga uwagi" : "Needs attention"}>
-        <button type="button" onClick={() => { resetFilters(); setAttention("incomplete"); document.getElementById("candidate-list")?.scrollIntoView(); }}><span className="attention-icon amber">!</span><div><strong>{dashboard.needs_information}</strong><span>{language === "pl" ? "Brakujące informacje" : "Missing information"}</span></div><span aria-hidden="true">↗</span></button>
-        <button type="button" onClick={() => { resetFilters(); setAttention("unassigned"); document.getElementById("candidate-list")?.scrollIntoView(); }}><span className="attention-icon blue">◎</span><div><strong>{dashboard.unassigned}</strong><span>{language === "pl" ? "Do przypisania" : "Unassigned applications"}</span></div><span aria-hidden="true">↗</span></button>
-        {dashboard.reply_drafts !== null && <a href="/inbox?filter=drafts"><span className="attention-icon purple">≡</span><div><strong>{dashboard.reply_drafts}</strong><span>{language === "pl" ? "Szkice odpowiedzi" : "Reply drafts"}</span></div><span aria-hidden="true">↗</span></a>}
-        {dashboard.conversations !== null && <a href="/inbox"><span className="attention-icon teal">✉</span><div><strong>{dashboard.conversations}</strong><span>{language === "pl" ? "Rozmowy" : "Conversations"}</span></div><span aria-hidden="true">↗</span></a>}
-      </section>}
-      {attention && <div className="active-attention" role="status">{language === "pl" ? "Filtr uwagi" : "Attention filter"}: {attention === "incomplete" ? (language === "pl" ? "Brakujące informacje" : "Missing information") : (language === "pl" ? "Do przypisania" : "Unassigned")}<button type="button" onClick={() => { setAttention(""); setOffset(0); }}>{language === "pl" ? "Wyczyść" : "Clear"}</button></div>}
-      <section className="stats-grid" aria-label={language === "pl" ? "Statystyki rekrutacji" : "Recruitment statistics"}>
+      {dashboard && (
+        <section
+          className="attention-grid"
+          aria-label={language === "pl" ? "Wymaga uwagi" : "Needs attention"}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              resetFilters();
+              setAttention("incomplete");
+              document.getElementById("candidate-list")?.scrollIntoView();
+            }}
+          >
+            <span className="attention-icon amber">!</span>
+            <div>
+              <strong>{dashboard.needs_information}</strong>
+              <span>
+                {language === "pl"
+                  ? "Brakujące informacje"
+                  : "Missing information"}
+              </span>
+            </div>
+            <span aria-hidden="true">↗</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              resetFilters();
+              setAttention("unassigned");
+              document.getElementById("candidate-list")?.scrollIntoView();
+            }}
+          >
+            <span className="attention-icon blue">◎</span>
+            <div>
+              <strong>{dashboard.unassigned}</strong>
+              <span>
+                {language === "pl"
+                  ? "Do przypisania"
+                  : "Unassigned applications"}
+              </span>
+            </div>
+            <span aria-hidden="true">↗</span>
+          </button>
+          {dashboard.reply_drafts !== null && (
+            <a href="/inbox?filter=drafts">
+              <span className="attention-icon purple">≡</span>
+              <div>
+                <strong>{dashboard.reply_drafts}</strong>
+                <span>
+                  {language === "pl" ? "Szkice odpowiedzi" : "Reply drafts"}
+                </span>
+              </div>
+              <span aria-hidden="true">↗</span>
+            </a>
+          )}
+          {dashboard.conversations !== null && (
+            <a href="/inbox">
+              <span className="attention-icon teal">✉</span>
+              <div>
+                <strong>{dashboard.conversations}</strong>
+                <span>{language === "pl" ? "Rozmowy" : "Conversations"}</span>
+              </div>
+              <span aria-hidden="true">↗</span>
+            </a>
+          )}
+        </section>
+      )}
+      {attention && (
+        <div className="active-attention" role="status">
+          {language === "pl" ? "Filtr uwagi" : "Attention filter"}:{" "}
+          {attention === "incomplete"
+            ? language === "pl"
+              ? "Brakujące informacje"
+              : "Missing information"
+            : language === "pl"
+              ? "Do przypisania"
+              : "Unassigned"}
+          <button
+            type="button"
+            onClick={() => {
+              setAttention("");
+              setOffset(0);
+            }}
+          >
+            {language === "pl" ? "Wyczyść" : "Clear"}
+          </button>
+        </div>
+      )}
+      <section
+        className="stats-grid"
+        aria-label={
+          language === "pl" ? "Statystyki rekrutacji" : "Recruitment statistics"
+        }
+      >
         {cards.map((card, index) => (
-          <button className="stat-card stat-filter" key={card.code}
+          <button
+            className="stat-card stat-filter"
+            key={card.code}
             aria-pressed={status === card.code}
             onClick={() => {
               setStatus(card.code);
               setAttention("");
               setOffset(0);
               document.getElementById("candidate-list")?.scrollIntoView();
-            }}>
-            <div className="stat-topline"><p>{card.label}</p><span aria-hidden="true">{index === 0 ? "◎" : "●"}</span></div>
+            }}
+          >
+            <div className="stat-topline">
+              <p>{card.label}</p>
+              <span aria-hidden="true">{index === 0 ? "◎" : "●"}</span>
+            </div>
             <strong>{card.value ?? "—"}</strong>
           </button>
         ))}
       </section>
 
-      {dashboard && <section className="pipeline-panel" aria-label={language === "pl" ? "Struktura aplikacji" : "Application distribution"}>
-        <div className="pipeline-title"><strong>{language === "pl" ? "Struktura aplikacji" : "Application distribution"}</strong><span>{language === "pl" ? "Aktualny stan rekrutacji" : "Current recruitment snapshot"}</span></div>
-        <div className="pipeline-track">{statuses.map(item => item.code).map(key => dashboard.by_status[key] > 0 && <div key={key} className={`pipeline-segment pipeline-${key}`} style={{flex: dashboard.by_status[key], backgroundColor: statuses.find(item => item.code === key)?.color}} title={`${statusLabels[key]}: ${dashboard.by_status[key]}`} />)}</div>
-        <div className="pipeline-legend">{statuses.map(item => item.code).map(key => <span key={key}><i style={{backgroundColor: statuses.find(item => item.code === key)?.color}} />{statusLabels[key]} <strong>{dashboard.by_status[key]}</strong></span>)}</div>
-      </section>}
+      {dashboard && (
+        <section
+          className="pipeline-panel"
+          aria-label={
+            language === "pl"
+              ? "Struktura aplikacji"
+              : "Application distribution"
+          }
+        >
+          <div className="pipeline-title">
+            <strong>
+              {language === "pl"
+                ? "Struktura aplikacji"
+                : "Application distribution"}
+            </strong>
+            <span>
+              {language === "pl"
+                ? "Aktualny stan rekrutacji"
+                : "Current recruitment snapshot"}
+            </span>
+          </div>
+          <div className="pipeline-track">
+            {statuses
+              .map((item) => item.code)
+              .map(
+                (key) =>
+                  dashboard.by_status[key] > 0 && (
+                    <div
+                      key={key}
+                      className={`pipeline-segment pipeline-${key}`}
+                      style={{
+                        flex: dashboard.by_status[key],
+                        backgroundColor: statuses.find(
+                          (item) => item.code === key,
+                        )?.color,
+                      }}
+                      title={`${statusLabels[key]}: ${dashboard.by_status[key]}`}
+                    />
+                  ),
+              )}
+          </div>
+          <div className="pipeline-legend">
+            {statuses
+              .filter((item) => (dashboard.by_status[item.code] ?? 0) > 0)
+              .map((item) => item.code)
+              .map((key) => (
+                <span key={key}>
+                  <i
+                    style={{
+                      backgroundColor: statuses.find(
+                        (item) => item.code === key,
+                      )?.color,
+                    }}
+                  />
+                  {statusLabels[key]}{" "}
+                  <strong>{dashboard.by_status[key]}</strong>
+                </span>
+              ))}
+          </div>
+        </section>
+      )}
       {dashboard && (
         <section className="branch-summary" aria-label={t.city}>
           {dashboard.by_branch.map((branch) => (
-            <button key={branch.branch_id}
-              className={city === branch.city ? "branch-chip selected" : "branch-chip"}
+            <button
+              key={branch.branch_id}
+              className={
+                city === branch.city ? "branch-chip selected" : "branch-chip"
+              }
               aria-pressed={city === branch.city}
               onClick={() => {
                 setCity(city === branch.city ? "" : branch.city);
                 setOffset(0);
-              }}>
-              {branch.city}<strong>{branch.total}</strong>
+              }}
+            >
+              {branch.city}
+              <strong>{branch.total}</strong>
             </button>
           ))}
-          {dashboard.unassigned > 0 && <span className="branch-chip">
-            {language === "pl" ? "Bez przypisanego miasta" : "No assigned city"}
-            <strong>{dashboard.unassigned}</strong>
-          </span>}
+          {dashboard.unassigned > 0 && (
+            <span className="branch-chip">
+              {language === "pl"
+                ? "Bez przypisanego miasta"
+                : "No assigned city"}
+              <strong>{dashboard.unassigned}</strong>
+            </span>
+          )}
         </section>
       )}
 
       <section className="panel" id="candidate-list">
         <div className="panel-heading">
-          <div><h2>{t.candidates}</h2><p>{t.searchHelp}</p></div>
+          <div>
+            <h2>{t.candidates}</h2>
+            <p>{t.searchHelp}</p>
+          </div>
           <span className="result-count">
-            {loading ? t.loading : listError ? "—" : `${t.results}: ${page?.total ?? 0}`}
+            {loading
+              ? t.loading
+              : listError
+                ? "—"
+                : `${t.results}: ${page?.total ?? 0}`}
           </span>
         </div>
 
         <div className="filters">
           <label className="search-field">
             {t.search}
-            <input type="search" placeholder={t.placeholder} value={search}
+            <input
+              type="search"
+              placeholder={t.placeholder}
+              value={search}
               onChange={(event) => {
                 setSearch(event.target.value);
                 setOffset(0);
-              }} />
+              }}
+            />
           </label>
           <label>
             {t.city}
-            <select value={city} onChange={(event) => {
-              setCity(event.target.value); setOffset(0);
-            }}>
+            <select
+              value={city}
+              onChange={(event) => {
+                setCity(event.target.value);
+                setOffset(0);
+              }}
+            >
               <option value="">{t.allCities}</option>
               {branches.map((branch) => (
-                <option key={branch.id} value={branch.city}>{branch.city}</option>
+                <option key={branch.id} value={branch.city}>
+                  {branch.city}
+                </option>
               ))}
             </select>
           </label>
           <label>
             {t.position}
-            <select value={position} onChange={(event) => {
-              setPosition(event.target.value); setOffset(0);
-            }}>
+            <select
+              value={position}
+              onChange={(event) => {
+                setPosition(event.target.value);
+                setOffset(0);
+              }}
+            >
               <option value="">{t.allPositions}</option>
               {positions.map((item) => (
-                <option key={item} value={item}>{positionLabel(item)}</option>
+                <option key={item} value={item}>
+                  {positionLabel(item)}
+                </option>
               ))}
             </select>
           </label>
           <label>
             {t.status}
-            <select value={status} onChange={(event) => {
-              setStatus(event.target.value); setOffset(0);
-            }}>
+            <select
+              value={status}
+              onChange={(event) => {
+                setStatus(event.target.value);
+                setOffset(0);
+              }}
+            >
               <option value="">{t.allStatuses}</option>
               {Object.entries(statusLabels).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
+                <option key={value} value={value}>
+                  {label}
+                </option>
               ))}
             </select>
           </label>
-          <button className="secondary-button" onClick={resetFilters}>{t.clear}</button>
+          <button className="secondary-button" onClick={resetFilters}>
+            {t.clear}
+          </button>
         </div>
 
         <div aria-live="polite">
           {listError ? (
-            <p className="empty-state error" role="alert">{t.error}</p>
+            <p className="empty-state error" role="alert">
+              {t.error}
+            </p>
           ) : loading ? (
             <p className="empty-state">{t.loading}</p>
           ) : !page?.items.length ? (
             <div className="empty-state">
-              <h3>{t.empty}</h3><p>{t.emptyHelp}</p>
+              <h3>{t.empty}</h3>
+              <p>{t.emptyHelp}</p>
             </div>
           ) : (
             <div className="table-scroll">
               <table>
                 <thead>
                   <tr>
-                    <th>{t.candidate}</th><th>{t.position}</th>
-                    <th>{t.city}</th><th>{t.status}</th>
-                    <th>{t.date}</th><th>CV</th><th>{language === "pl" ? "Profil" : "Profile"}</th>
+                    <th>{t.candidate}</th>
+                    <th>{t.position}</th>
+                    <th>{t.city}</th>
+                    <th>{t.status}</th>
+                    <th>{t.date}</th>
+                    <th>CV</th>
+                    <th>{language === "pl" ? "Profil" : "Profile"}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -357,20 +590,40 @@ export default function Home() {
                       <td>
                         <div className="candidate-identity">
                           <span className="candidate-avatar" aria-hidden="true">
-                            {candidate.first_name.slice(0, 1)}{candidate.last_name.slice(0, 1)}
+                            {candidate.first_name.slice(0, 1)}
+                            {candidate.last_name.slice(0, 1)}
                           </span>
                           <div>
-                            <a className="candidate-link" href={`/candidates/${candidate.id}`}>
-                              <strong>{candidate.first_name} {candidate.last_name}</strong>
+                            <a
+                              className="candidate-link"
+                              href={`/candidates/${candidate.id}`}
+                            >
+                              <strong>
+                                {candidate.first_name} {candidate.last_name}
+                              </strong>
                             </a>
-                            <span className="cell-subtitle">{candidate.email}</span>
+                            <span className="cell-subtitle">
+                              {candidate.email}
+                            </span>
                           </div>
                         </div>
                       </td>
-                      <td>{positionLabel(candidate.position)}<ApplicationCompleteness candidate={candidate} language={language} /></td>
-                      <td>{candidate.branch?.city ?? (language === "pl" ? "Brak miasta" : "Missing city")}</td>
                       <td>
-                        <span className={`status-badge status-${candidate.status}`} style={badgeStyle(candidate.status)}>
+                        {positionLabel(candidate.position)}
+                        <ApplicationCompleteness
+                          candidate={candidate}
+                          language={language}
+                        />
+                      </td>
+                      <td>
+                        {candidate.branch?.city ??
+                          (language === "pl" ? "Brak miasta" : "Missing city")}
+                      </td>
+                      <td>
+                        <span
+                          className={`status-badge status-${candidate.status}`}
+                          style={badgeStyle(candidate.status)}
+                        >
                           {statusLabels[candidate.status] ?? candidate.status}
                         </span>
                       </td>
@@ -380,13 +633,22 @@ export default function Home() {
                         )}
                       </td>
                       <td>
-                        <span className={candidate.cv_original_filename ? "cv-present" : "muted-text"}>
+                        <span
+                          className={
+                            candidate.cv_original_filename
+                              ? "cv-present"
+                              : "muted-text"
+                          }
+                        >
                           {candidate.cv_original_filename ? t.added : t.missing}
                         </span>
                       </td>
                       <td>
-                        <a className="profile-action" href={`/candidates/${candidate.id}`}
-                          aria-label={`${language === "pl" ? "Otwórz profil" : "Open profile"}: ${candidate.first_name} ${candidate.last_name}`}>
+                        <a
+                          className="profile-action"
+                          href={`/candidates/${candidate.id}`}
+                          aria-label={`${language === "pl" ? "Otwórz profil" : "Open profile"}: ${candidate.first_name} ${candidate.last_name}`}
+                        >
                           {language === "pl" ? "Otwórz" : "Open"} →
                         </a>
                       </td>
@@ -401,17 +663,23 @@ export default function Home() {
         {page && !loading && !listError && page.total > 0 && (
           <footer className="pagination">
             <span>
-              {page.offset + 1}–{Math.min(page.offset + page.items.length, page.total)}
-              {" "}{t.of} {page.total}
+              {page.offset + 1}–
+              {Math.min(page.offset + page.items.length, page.total)} {t.of}{" "}
+              {page.total}
             </span>
             <div>
-              <button className="secondary-button" disabled={offset === 0}
-                onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}>
+              <button
+                className="secondary-button"
+                disabled={offset === 0}
+                onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+              >
                 {t.previous}
               </button>
-              <button className="secondary-button"
+              <button
+                className="secondary-button"
                 disabled={offset + PAGE_SIZE >= page.total}
-                onClick={() => setOffset(offset + PAGE_SIZE)}>
+                onClick={() => setOffset(offset + PAGE_SIZE)}
+              >
                 {t.next}
               </button>
             </div>
@@ -421,6 +689,3 @@ export default function Home() {
     </main>
   );
 }
-
-
-

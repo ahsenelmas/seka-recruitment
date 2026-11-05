@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\Candidate;
 use App\Models\Branch;
+use App\Models\Candidate;
 use App\Models\RecruitmentStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -54,7 +54,7 @@ class RecruitmentStatusesTest extends TestCase
         $branch = Branch::create(['name' => 'Warsaw', 'city' => 'Warszawa']);
         $this->withCredentials()->withUnencryptedCookie('seka_demo', 'branch_manager:'.$branch->id)
             ->patchJson('/api/admin/statuses/review', ['label_en' => 'Changed'])->assertForbidden();
-        $this->getJson('/api/statuses')->assertOk()->assertJsonCount(5);
+        $this->getJson('/api/statuses')->assertOk()->assertJsonCount(20);
     }
 
     public function test_reordering_requires_the_complete_unique_list_and_codes_are_immutable(): void
